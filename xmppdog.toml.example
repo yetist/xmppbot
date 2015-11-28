@@ -1,0 +1,38 @@
+[bot]
+admin = ["yetist@gmail.com", "yetist@jabber.org"]
+debug = false
+notls = false
+session = false
+allowfriends = true
+
+[account]
+# jid = username@domain
+domain = "jabber.org"
+username = "bot"
+password = ""
+resource = "bot"
+server = "jabber.org"
+port = 5222
+status = "available"
+statusmessage = "hi, I am online."
+
+[plugin.chat]
+enable = true
+fuck = "fuck.txt"
+random = "random.txt"
+
+[plugin.ip]
+enable = true
+db = "qqwrt.dat"
+
+# 聊天室设置
+[plugin.muc]
+enable = true
+    [[plugin.muc.rooms]]
+    jid = "linuxcn@conference.jabber.org"
+    nickname = "bot"
+    room_log = true
+    [[plugin.muc.rooms]]
+    jid = "linuxcn@conference.jaim.org"
+    nickname = "bot"
+    room_log = true
