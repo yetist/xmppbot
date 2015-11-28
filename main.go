@@ -80,19 +80,21 @@ func main() {
 			}
 			switch v := chat.(type) {
 			case xmpp.Chat:
-				fmt.Println(v.Remote, v.Text)
-				fmt.Printf("chat:%#v\n", v)
+				//fmt.Println(v.Remote, v.Text)
+				//fmt.Printf("chat:%#v\n", v)
+				ChatPlugins(v)
 			case xmpp.Presence:
-				fmt.Println(v.From, v.Show)
-				fmt.Printf("presence:%#v\n", v)
-				if v.Type == "subscribe" {
-					if config.Bot.AllowFriends {
-						talk.ApproveSubscription(v.From)
-						talk.RequestSubscription(v.From)
-					} else {
-						talk.RevokeSubscription(v.From)
-					}
-				}
+				//fmt.Println(v.From, v.Show)
+				//fmt.Printf("presence:%#v\n", v)
+				PresencePlugins(v)
+				//if v.Type == "subscribe" {
+				//	if config.Bot.AllowFriends {
+				//		talk.ApproveSubscription(v.From)
+				//		talk.RequestSubscription(v.From)
+				//	} else {
+				//		talk.RevokeSubscription(v.From)
+				//	}
+				//}
 			}
 		}
 	}()
