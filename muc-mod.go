@@ -72,9 +72,6 @@ func (m *Muc) Chat(msg xmpp.Chat) {
 	if msg.Type != "groupchat" || len(msg.Text) == 0 {
 		return
 	}
-	//	if config.Bot.Debug {
-	//		fmt.Printf("[%s] Chat:%#v\n", m.Name, msg)
-	//	}
 	for _, v := range m.Rooms {
 		// 对bot自己发出的消息直接忽略
 		if msg.Remote == v.JID+"/"+v.Nickname {
@@ -84,14 +81,9 @@ func (m *Muc) Chat(msg xmpp.Chat) {
 
 	tokens := strings.SplitN(msg.Remote, "/", 2)
 	m.client.Send(xmpp.Chat{Remote: tokens[0], Type: "groupchat", Text: tokens[1] + " said: " + msg.Text})
-	//m.client.Send(xmpp.Chat{Remote: "test@groups.isoft-linux.org", Type: "groupchat", Text: "You said: " + msg.Text})
-	//m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "groupchat", Text: "You said: " + msg.Text, Other: []string{"other", "ok"}})
 }
 
 func (m *Muc) Presence(pres xmpp.Presence) {
-	//	if config.Bot.Debug {
-	//		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
-	//	}
 }
 
 func (m *Muc) Help() {

@@ -47,19 +47,25 @@ func (m *Sudo) Chat(msg xmpp.Chat) {
 	if msg.Type != "chat" || len(msg.Text) == 0 {
 		return
 	}
-	if config.Bot.Debug {
-		fmt.Printf("[%s] Chat:%#v\n", m.Name, msg)
+
+	// 仅处理好友消息
+	if strings.HasPrefix(msg.Text, "--help") {
+		//cmd := strings.TrimSpace(msg.Text[len("--help"):])
+		m.Help()
+	} else if strings.HasPrefix(msg.Text, m.CmdPrefix) {
+		cmd := strings.TrimSpace(msg.Text[len(m.CmdPrefix):])
+		m.Command(cmd, msg)
 	}
 
 	/* 处理管理员命令 */
-	cmds := strings.SplitN(msg.Text, " ", 2)
-	if cmds[0] == m.CmdPrefix {
-		if len(cmds) >= 2 {
-			m.Command(cmds[1], msg)
-		} else {
-			m.cmd_help("", msg)
-		}
-	}
+	//cmds := strings.SplitN(msg.Text, " ", 2)
+	//if cmds[0] == m.CmdPrefix {
+	//	if len(cmds) >= 2 {
+	//		m.Command(cmds[1], msg)
+	//	} else {
+	//		m.cmd_help("", msg)
+	//	}
+	//}
 }
 
 func (m *Sudo) Presence(pres xmpp.Presence) {
@@ -82,7 +88,7 @@ func (m *Sudo) Help() {
 
 func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
 	if !IsAdmin(msg.Remote) {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "你无权使用管理员命令！"})
+		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "你不是管理员，无法执行管理员命令！"})
 		return
 	}
 	if cmd == "" || cmd == "help" {
@@ -101,8 +107,8 @@ func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
 		m.cmd_unsubscribe(cmd, msg)
 	} else if strings.HasPrefix(cmd, "status ") {
 		m.cmd_status(cmd, msg)
-	} else if cmd == "list-friends" {
-		m.cmd_list_friends(cmd, msg)
+		//} else if cmd == "list-friends" {
+		//	m.cmd_list_friends(cmd, msg)
 	} else {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不支持的命令: " + cmd})
 	}
@@ -119,7 +125,7 @@ func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 		"status <status> [message]":   "设置机器人在线状态",
 		"subscribe <jid>":             "请求加<jid>为好友",
 		"unsubscribe <jid>":           "不再信认<jid>为好友",
-		"auto-subscribe <true|false>": "是否自动同意好友请求",
+		"auto-subscribe <true|false>": "是否自动完成互加好友",
 		"new-admin <jid>":             "新增管理员帐号",
 
 		//"show config" : "",
@@ -203,9 +209,9 @@ func (m *Sudo) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Sudo) cmd_list_friends(cmd string, msg xmpp.Chat) {
-	m.client.Roster()
-}
+//func (m *Sudo) cmd_list_friends(cmd string, msg xmpp.Chat) {
+//	m.client.Roster()
+//}
 
 func (m *Sudo) cmd_status(cmd string, msg xmpp.Chat) {
 	// cmd is "status chat 正在聊天中..."
