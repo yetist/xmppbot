@@ -44,11 +44,13 @@ func NewClient() (talk *xmpp.Client, err error) {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: xmppdog2 [options]\n")
+		fmt.Fprintf(os.Stderr, "usage: xmppbot [options]\n")
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
+
 	flag.Parse()
+
 	if config.Account.Username == "" || config.Account.Password == "" {
 		if config.Bot.Debug && config.Account.Username == "" && config.Account.Password == "" {
 			fmt.Fprintf(os.Stderr, "no Username or Password were given; attempting ANONYMOUS auth\n")
@@ -56,13 +58,16 @@ func main() {
 			flag.Usage()
 		}
 	}
+	if !IsValidStatus(config.Account.Status) {
+		fmt.Fprintf(os.Stderr, "invalid status setup, allowed are: away, chat, dnd, xa.\n")
+		os.Exit(1)
+	}
 
 	PluginInit()
-
-	xmpp.DefaultConfig = tls.Config{ServerName: config.Account.Server}
-
-	//如果有tls, 那就不能跳过检查。如果没有，就跳过检查。
-	xmpp.DefaultConfig.InsecureSkipVerify = config.Bot.NoTLS
+	xmpp.DefaultConfig = tls.Config{
+		ServerName:         config.Account.Server,
+		InsecureSkipVerify: config.Bot.NoTLS, //如果没有tls，就跳过检查。
+	}
 
 	talk, err := NewClient()
 
@@ -80,21 +85,9 @@ func main() {
 			}
 			switch v := chat.(type) {
 			case xmpp.Chat:
-				//fmt.Println(v.Remote, v.Text)
-				//fmt.Printf("chat:%#v\n", v)
 				PluginChat(v)
 			case xmpp.Presence:
-				//fmt.Println(v.From, v.Show)
-				//fmt.Printf("presence:%#v\n", v)
 				PluginPresence(v)
-				//if v.Type == "subscribe" {
-				//	if config.Bot.AllowFriends {
-				//		talk.ApproveSubscription(v.From)
-				//		talk.RequestSubscription(v.From)
-				//	} else {
-				//		talk.RevokeSubscription(v.From)
-				//	}
-				//}
 			}
 		}
 	}()

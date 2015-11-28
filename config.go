@@ -35,20 +35,7 @@ type Config struct {
 var config Config
 
 func init() {
-	LoadConfig("xmppdog", "", "xmppdog.toml")
-	fmt.Printf("%#v\n", config.Bot)
-	fmt.Printf("%#v\n", config.Account)
-	//	for k, v := range config.Plugin {
-	//		//fmt.Printf("%s, v=%v\n", k, v.(PluginItem)["enable"]) //config.Plugin["muc"])
-	//		fmt.Printf("plugin=%s\n", k) //config.Plugin["muc"])
-	//		for m, n := range v {
-	//			fmt.Printf("  key=%s, v=%v\n", m, n) //config.Plugin["muc"])
-	//		}
-	//		//for m, n := range v.(map[string]interface{}) {
-	//		//	fmt.Printf("  key=%s, v=%v\n", m, n) //config.Plugin["muc"])
-	//		//}
-	//	}
-
+	LoadConfig("xmppbot", "", "xmppbot.toml")
 }
 
 func ExecPath() (string, error) {

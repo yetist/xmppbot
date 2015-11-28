@@ -4,7 +4,7 @@ import (
 	"github.com/mattn/go-xmpp"
 )
 
-type BotModule interface {
+type BotPlugin interface {
 	GetName() string
 	GetSummary() string
 	CheckEnv() bool
@@ -15,57 +15,53 @@ type BotModule interface {
 	Help()
 }
 
-var plugins []BotModule
+var plugins []BotPlugin
 
-// 初始化所有启用的bot插件。
+// 初始化并加载所有模块
 func PluginInit() {
 	// 自动启用内置插件
-	plugins = append(plugins, NewAdmin("admin"))
+	plugins = append(plugins, NewSudo("sudo"))
 
-	// 检查每个插件运行环境是否满足，如不满足，则从列表中去掉。
 	for name, v := range config.Plugin {
-		if name == "chat" && v["enable"].(bool) {
-			plugin := NewChat(name, v)
-			if plugin.CheckEnv() {
-				plugins = append(plugins, plugin)
-			}
-		} else if name == "muc" && v["enable"].(bool) {
-			plugin := NewMuc(name, v)
-			if plugin.CheckEnv() {
+		if v["enable"].(bool) { //模块是否被启用
+			plugin := CreatePlugin(name, v)
+			if plugin != nil && plugin.CheckEnv() { //模块运行环境是否满足
 				plugins = append(plugins, plugin)
 			}
 		}
 	}
 }
 
-// 当bot登录成功后，调用每个插件处理函数。
+// 模块加载时的处理函数
 func PluginBegin(client *xmpp.Client) {
 	for _, v := range plugins {
 		v.Begin(client)
 	}
 }
 
-// 当收到聊天消息时，调用每个插件处理函数。
+// 模块卸载时的处理函数
+func PluginEnd() {
+	for _, v := range plugins {
+		v.End()
+	}
+}
+
+// 模块收到消息时的处理
 func PluginChat(chat xmpp.Chat) {
 	for _, v := range plugins {
 		v.Chat(chat)
 	}
 }
 
-// 当收到Presence消息时，调用每个插件处理函数。
+// 模块收到Presence消息时的处理
 func PluginPresence(pres xmpp.Presence) {
 	for _, v := range plugins {
 		v.Presence(pres)
 	}
 }
 
-// 当bot登录成功后，调用每个插件处理函数。
+// 按名称卸载某个模块
 func PluginRemove(name string) {
-	//不允许禁用内置模块
-	if name == "admin" {
-		return
-	}
-
 	id := -1
 	for k, v := range plugins {
 		if name == v.GetName() {
@@ -78,6 +74,7 @@ func PluginRemove(name string) {
 	}
 }
 
+// 按名称加载某个模块
 func PluginAdd(name string, client *xmpp.Client) {
 	for _, v := range plugins {
 		if name == v.GetName() {
@@ -87,7 +84,7 @@ func PluginAdd(name string, client *xmpp.Client) {
 	for n, v := range config.Plugin {
 		if n == name && v["enable"].(bool) {
 			plugin := CreatePlugin(name, v)
-			if plugin.CheckEnv() {
+			if plugin != nil && plugin.CheckEnv() { //模块运行环境是否满足
 				plugin.Begin(client)
 				plugins = append(plugins, plugin)
 			}
@@ -95,8 +92,8 @@ func PluginAdd(name string, client *xmpp.Client) {
 	}
 }
 
-func CreatePlugin(name string, opt map[string]interface{}) BotModule {
-	var plugin BotModule
+func CreatePlugin(name string, opt map[string]interface{}) BotPlugin {
+	var plugin BotPlugin
 	if name == "chat" {
 		plugin = NewChat(name, opt)
 	} else if name == "muc" {

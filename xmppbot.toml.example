@@ -13,7 +13,7 @@ password = ""
 resource = "bot"
 server = "jabber.org"
 port = 5222
-status = "available"
+status = "chat"
 statusmessage = "hi, I am online."
 
 [plugin.chat]

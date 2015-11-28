@@ -22,3 +22,15 @@ func IsAdmin(jid string) bool {
 	}
 	return false
 }
+
+func IsValidStatus(status string) bool {
+	switch status {
+	case
+		"away",
+		"chat",
+		"dnd",
+		"xa":
+		return true
+	}
+	return false
+}

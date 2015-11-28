@@ -7,8 +7,9 @@ import (
 )
 
 type RoomOption struct {
-	Jid      string
+	JID      string
 	Nickname string
+	Password string
 	RoomLog  bool
 }
 
@@ -22,9 +23,12 @@ func NewMuc(name string, opt map[string]interface{}) *Muc {
 	var rooms []RoomOption
 	for _, i := range opt["rooms"].([]map[string]interface{}) {
 		room := RoomOption{
-			Jid:      i["jid"].(string),
+			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
 			RoomLog:  i["room_log"].(bool),
+		}
+		if i["password"] != nil {
+			room.Password = i["password"].(string)
 		}
 		rooms = append(rooms, room)
 	}
@@ -36,25 +40,31 @@ func (m *Muc) GetName() string {
 }
 
 func (m *Muc) GetSummary() string {
-	return "多人聊天室群聊"
+	return "聊天室模块，提供--room开头的命令，并自动响应聊天室消息"
 }
 
 func (m *Muc) CheckEnv() bool {
 	return true
 }
 
+// 模块加载时，自动进入聊天室。
 func (m *Muc) Begin(client *xmpp.Client) {
 	m.client = client
 	for _, room := range m.Rooms {
-		client.JoinMUC(room.Jid, room.Nickname)
-		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.Jid, room.Nickname)
+		if len(room.Password) > 0 {
+			client.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
+		} else {
+			client.JoinMUC(room.JID, room.Nickname)
+		}
+		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)
 	}
 }
 
+// 模块卸载时，自动离开聊天室。
 func (m *Muc) End() {
 	for _, room := range m.Rooms {
-		m.client.LeaveMUC(room.Jid)
-		fmt.Printf("[%s] Leave from %s\n", m.Name, room.Jid)
+		m.client.LeaveMUC(room.JID)
+		fmt.Printf("[%s] Leave from %s\n", m.Name, room.JID)
 	}
 }
 
@@ -62,12 +72,12 @@ func (m *Muc) Chat(msg xmpp.Chat) {
 	if msg.Type != "groupchat" || len(msg.Text) == 0 {
 		return
 	}
-	if config.Bot.Debug {
-		fmt.Printf("[%s] Chat:%#v\n", m.Name, msg)
-	}
+	//	if config.Bot.Debug {
+	//		fmt.Printf("[%s] Chat:%#v\n", m.Name, msg)
+	//	}
 	for _, v := range m.Rooms {
 		// 对bot自己发出的消息直接忽略
-		if msg.Remote == v.Jid+"/"+v.Nickname {
+		if msg.Remote == v.JID+"/"+v.Nickname {
 			return
 		}
 	}
@@ -79,9 +89,9 @@ func (m *Muc) Chat(msg xmpp.Chat) {
 }
 
 func (m *Muc) Presence(pres xmpp.Presence) {
-	if config.Bot.Debug {
-		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
-	}
+	//	if config.Bot.Debug {
+	//		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
+	//	}
 }
 
 func (m *Muc) Help() {
