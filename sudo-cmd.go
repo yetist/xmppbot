@@ -111,14 +111,17 @@ func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
 func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 
 	help_msg := map[string]string{
-		"help":                      "显示本信息",
-		"list-all-plugins":          "列出所有的模块(管理员命令)",
-		"list-plugins":              "列出当前启用的模块(管理员命令)",
-		"disable <Plugin>":          "禁用某模块(管理员命令)",
-		"enable <Plugin>":           "启用某模块(管理员命令)",
-		"status <status> [message]": "设置机器人在线状态",
-		"subscribe <jid>":           "请求加<jid>为好友",
-		"unsubscribe <jid>":         "不再信认<jid>为好友",
+		"help":                        "显示本信息",
+		"list-all-plugins":            "列出所有的模块(管理员命令)",
+		"list-plugins":                "列出当前启用的模块(管理员命令)",
+		"disable <Plugin>":            "禁用某模块(管理员命令)",
+		"enable <Plugin>":             "启用某模块(管理员命令)",
+		"status <status> [message]":   "设置机器人在线状态",
+		"subscribe <jid>":             "请求加<jid>为好友",
+		"unsubscribe <jid>":           "不再信认<jid>为好友",
+		"auto-subscribe <true|false>": "是否自动同意好友请求",
+		"new-admin <jid>":             "新增管理员帐号",
+
 		//"show config" : "",
 
 		//"list-fields" : "",
