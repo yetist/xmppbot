@@ -31,15 +31,30 @@ func NewMuc(name string, opt map[string]interface{}) *Muc {
 	return &Muc{Name: name, Rooms: rooms}
 }
 
+func (m *Muc) GetName() string {
+	return m.Name
+}
+
+func (m *Muc) GetSummary() string {
+	return "多人聊天室群聊"
+}
+
 func (m *Muc) CheckEnv() bool {
 	return true
 }
 
-func (m *Muc) Prep(client *xmpp.Client) {
+func (m *Muc) Begin(client *xmpp.Client) {
 	m.client = client
 	for _, room := range m.Rooms {
 		client.JoinMUC(room.Jid, room.Nickname)
 		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.Jid, room.Nickname)
+	}
+}
+
+func (m *Muc) End() {
+	for _, room := range m.Rooms {
+		m.client.LeaveMUC(room.Jid)
+		fmt.Printf("[%s] Leave from %s\n", m.Name, room.Jid)
 	}
 }
 
@@ -70,8 +85,4 @@ func (m *Muc) Presence(pres xmpp.Presence) {
 }
 
 func (m *Muc) Help() {
-}
-
-func (m *Muc) GetName() string {
-	return m.Name
 }

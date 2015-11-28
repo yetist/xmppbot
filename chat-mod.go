@@ -20,12 +20,23 @@ func NewChat(name string, opt map[string]interface{}) *Chat {
 	}
 }
 
+func (m *Chat) GetName() string {
+	return m.Name
+}
+
+func (m *Chat) GetSummary() string {
+	return "好友聊天"
+}
+
 func (m *Chat) CheckEnv() bool {
 	return true
 }
 
-func (m *Chat) Prep(client *xmpp.Client) {
+func (m *Chat) Begin(client *xmpp.Client) {
 	m.client = client
+}
+
+func (m *Chat) End() {
 }
 
 func (m *Chat) Chat(msg xmpp.Chat) {
@@ -53,8 +64,4 @@ func (m *Chat) Presence(pres xmpp.Presence) {
 	}
 }
 func (m *Chat) Help() {
-}
-
-func (m *Chat) GetName() string {
-	return m.Name
 }

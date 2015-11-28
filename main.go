@@ -57,7 +57,7 @@ func main() {
 		}
 	}
 
-	InitPlugins()
+	PluginInit()
 
 	xmpp.DefaultConfig = tls.Config{ServerName: config.Account.Server}
 
@@ -70,7 +70,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	PrepPlugins(talk)
+	PluginBegin(talk)
 
 	go func() {
 		for {
@@ -82,11 +82,11 @@ func main() {
 			case xmpp.Chat:
 				//fmt.Println(v.Remote, v.Text)
 				//fmt.Printf("chat:%#v\n", v)
-				ChatPlugins(v)
+				PluginChat(v)
 			case xmpp.Presence:
 				//fmt.Println(v.From, v.Show)
 				//fmt.Printf("presence:%#v\n", v)
-				PresencePlugins(v)
+				PluginPresence(v)
 				//if v.Type == "subscribe" {
 				//	if config.Bot.AllowFriends {
 				//		talk.ApproveSubscription(v.From)
