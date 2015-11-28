@@ -13,6 +13,7 @@ password = ""
 resource = "bot"
 server = "jabber.org"
 port = 5222
+# away, chat, dnd, xa.
 status = "chat"
 statusmessage = "hi, I am online."
 
@@ -28,11 +29,13 @@ db = "qqwrt.dat"
 # 聊天室设置
 [plugin.muc]
 enable = true
-    [[plugin.muc.rooms]]
-    jid = "linuxcn@conference.jabber.org"
-    nickname = "bot"
-    room_log = true
-    [[plugin.muc.rooms]]
-    jid = "linuxcn@conference.jaim.org"
-    nickname = "bot"
-    room_log = true
+[[plugin.muc.rooms]]
+jid = "linuxcn@conference.jabber.org"
+nickname = "bot"
+#password = ""
+room_log = true
+[[plugin.muc.rooms]]
+jid = "linuxcn@conference.jaim.org"
+nickname = "bot"
+#password = ""
+room_log = true
