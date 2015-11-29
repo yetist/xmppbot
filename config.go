@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	appName = "xmppbot"
-	appCfg  = "xmppbot.toml"
+	AppName    = "xmppbot"
+	AppVersion = "0.1"
+	AppConfig  = "xmppbot.toml"
 )
 
 var config Config
@@ -42,7 +43,7 @@ type Config struct {
 }
 
 func init() {
-	LoadConfig(appName, appCfg)
+	LoadConfig(AppName, AppVersion, AppConfig)
 }
 
 func ExecPath() (string, error) {

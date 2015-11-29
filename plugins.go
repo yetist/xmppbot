@@ -7,15 +7,17 @@ import (
 var plugins []BotPlugin
 
 type BotPlugin interface {
+	Help()
 	GetName() string
 	GetSummary() string
 	CheckEnv() bool
-	Begin(client *xmpp.Client)
 	Chat(chat xmpp.Chat)
 	Presence(pres xmpp.Presence)
+	Begin(client *xmpp.Client)
 	End()
 	Restart()
-	Help()
+	GetOptions() map[string]string
+	SetOption(key, val string)
 }
 
 // 新增模块在这里注册
@@ -32,7 +34,7 @@ func CreatePlugin(name string, opt map[string]interface{}) BotPlugin {
 // Interface(), 初始化并加载所有模块
 func PluginInit() {
 	// 自动启用内置插件
-	plugins = append(plugins, NewSudo("sudo"))
+	plugins = append(plugins, NewAdmin("admin"))
 
 	for name, v := range config.Plugin {
 		if v["enable"].(bool) { //模块是否被启用

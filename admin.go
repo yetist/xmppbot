@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-type Sudo struct {
+type Admin struct {
 	Name      string
 	CmdPrefix string
 	client    *xmpp.Client
 	Option    map[string]string
 }
 
-func NewSudo(name string) *Sudo {
-	return &Sudo{
+func NewAdmin(name string) *Admin {
+	return &Admin{
 		Name: name,
 		Option: map[string]string{
 			"cmd":  config.Bot.AdminCmd,
@@ -24,44 +24,45 @@ func NewSudo(name string) *Sudo {
 	}
 }
 
-func (m *Sudo) GetName() string {
+func (m *Admin) GetName() string {
 	return m.Name
 }
 
-func (m *Sudo) GetSummary() string {
+func (m *Admin) GetSummary() string {
 	return "管理员模块，提供" + m.Option["cmd"] + "开头的命令响应[内置]"
 }
 
-func (m *Sudo) GetOptions() map[string]string {
+func (m *Admin) GetOptions() map[string]string {
 	return m.Option
 }
 
-func (m *Sudo) SetOption(key, val string) {
-	// 如果有key的话，更新之
-	m.Option[key] = val
+func (m *Admin) SetOption(key, val string) {
+	if _, ok := m.Option[key]; ok {
+		m.Option[key] = val
+	}
 }
 
-func (m *Sudo) CheckEnv() bool {
+func (m *Admin) CheckEnv() bool {
 	return true
 }
 
-func (m *Sudo) Begin(client *xmpp.Client) {
+func (m *Admin) Begin(client *xmpp.Client) {
 	m.client = client
 	m.client.Roster()
 }
 
-func (m *Sudo) End() {
+func (m *Admin) End() {
 }
 
-func (m *Sudo) Restart() {
-	LoadConfig(appName, appCfg)
+func (m *Admin) Restart() {
+	LoadConfig(AppName, AppVersion, AppConfig)
 	m.Option["cmd"] = config.Bot.AdminCmd
 	m.Option["help"] = config.Bot.HelpCmd
 	m.client.Roster()
 	SetStatus(m.client, config.Account.Status, config.Account.StatusMessage)
 }
 
-func (m *Sudo) Chat(msg xmpp.Chat) {
+func (m *Admin) Chat(msg xmpp.Chat) {
 	if msg.Type == "roster" {
 		fmt.Printf("%#v\n", msg.Roster)
 	}
@@ -79,7 +80,7 @@ func (m *Sudo) Chat(msg xmpp.Chat) {
 	}
 }
 
-func (m *Sudo) Presence(pres xmpp.Presence) {
+func (m *Admin) Presence(pres xmpp.Presence) {
 	if config.Bot.Debug {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
@@ -94,10 +95,10 @@ func (m *Sudo) Presence(pres xmpp.Presence) {
 	}
 }
 
-func (m *Sudo) Help() {
+func (m *Admin) Help() {
 }
 
-func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
+func (m *Admin) Command(cmd string, msg xmpp.Chat) {
 	if !IsAdmin(msg.Remote) {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "你不是管理员，无法执行管理员命令！"})
 		return
@@ -126,14 +127,16 @@ func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
 		m.cmd_add_admin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "del-admin ") {
 		m.cmd_del_admin(cmd, msg)
-		//} else if cmd == "list-friends" {
-		//	m.cmd_list_friends(cmd, msg)
+	} else if cmd == "list-options" {
+		m.cmd_list_options(cmd, msg)
+	} else if strings.HasPrefix(cmd, "set-option ") {
+		m.cmd_set_option(cmd, msg)
 	} else {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不支持的命令: " + cmd})
 	}
 }
 
-func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_help(cmd string, msg xmpp.Chat) {
 
 	help_msg := map[string]string{
 		"help":                        "显示本信息",
@@ -149,6 +152,8 @@ func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 		"list-admin":                  "列出管理员帐号",
 		"add-admin <jid>":             "新增管理员帐号",
 		"del-admin <jid>":             "新增管理员帐号",
+		"list-options":                "列出所有模块可配置选项",
+		"set-option <field> <value>":  "设置模块相关选项",
 
 		//"show config" : "",
 
@@ -176,12 +181,12 @@ func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: strings.Join(help_list, "\n")})
 }
 
-func (m *Sudo) cmd_restart(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_restart(cmd string, msg xmpp.Chat) {
 	m.Restart() //重启内置插件
 	PluginRestart(m.client)
 }
 
-func (m *Sudo) cmd_list_all_plugins(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_list_all_plugins(cmd string, msg xmpp.Chat) {
 	var names []string
 	names = append(names, m.Name+"[内置]")
 	for name, v := range config.Plugin {
@@ -195,7 +200,7 @@ func (m *Sudo) cmd_list_all_plugins(cmd string, msg xmpp.Chat) {
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Sudo) cmd_list_plugins(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_list_plugins(cmd string, msg xmpp.Chat) {
 	var names []string
 	for _, v := range plugins {
 		names = append(names, v.GetName()+" -- "+v.GetSummary())
@@ -204,7 +209,7 @@ func (m *Sudo) cmd_list_plugins(cmd string, msg xmpp.Chat) {
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Sudo) cmd_disable_plugin(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_disable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if tokens[1] == m.Name {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: m.Name + "是内置模块，不允许禁用"})
@@ -213,12 +218,12 @@ func (m *Sudo) cmd_disable_plugin(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Sudo) cmd_enable_plugin(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_enable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	PluginAdd(tokens[1], m.client)
 }
 
-func (m *Sudo) cmd_status(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_status(cmd string, msg xmpp.Chat) {
 	// cmd is "status chat 正在聊天中..."
 	var info = ""
 	tokens := strings.SplitN(cmd, " ", 3)
@@ -232,14 +237,14 @@ func (m *Sudo) cmd_status(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Sudo) cmd_subscribe(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		m.client.RequestSubscription(tokens[1])
 	}
 }
 
-func (m *Sudo) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if IsAdmin(tokens[1]) {
@@ -250,7 +255,7 @@ func (m *Sudo) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Sudo) cmd_auto_subscribe(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_auto_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 {
 		switch strings.ToLower(tokens[1]) {
@@ -260,19 +265,18 @@ func (m *Sudo) cmd_auto_subscribe(cmd string, msg xmpp.Chat) {
 			"1",
 			"true",
 			"T":
-			return true
 			config.Bot.AutoSubscribe = true
 		}
 		config.Bot.AutoSubscribe = false
 	}
 }
 
-func (m *Sudo) cmd_list_admin(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_list_admin(cmd string, msg xmpp.Chat) {
 	txt := "==管理员列表==\n" + strings.Join(config.Bot.Admin, "\n")
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Sudo) cmd_add_admin(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_add_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if IsAdmin(tokens[1]) {
@@ -287,7 +291,7 @@ func (m *Sudo) cmd_add_admin(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Sudo) cmd_del_admin(cmd string, msg xmpp.Chat) {
+func (m *Admin) cmd_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	jid, _ := SplitJID(msg.Remote)
 	if IsAdmin(tokens[1]) && tokens[1] != jid {
@@ -295,5 +299,34 @@ func (m *Sudo) cmd_del_admin(cmd string, msg xmpp.Chat) {
 		m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时取消了您的管理员身份!"})
 	} else {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不能取消 " + tokens[1] + " 的管理员身份!"})
+	}
+}
+
+func (m *Admin) cmd_list_options(cmd string, msg xmpp.Chat) {
+	options := map[string]string{}
+	for _, mod := range plugins {
+		for k, v := range mod.GetOptions() {
+			options[mod.GetName()+"."+k] = v
+		}
+	}
+	keys := SortMapKeys(options)
+
+	var opt_list []string
+	for _, v := range keys {
+		opt_list = append(opt_list, fmt.Sprintf("%s : %15s", v, options[v]))
+	}
+	txt := "==所有模块可配置选项==\n" + strings.Join(opt_list, "\n")
+	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
+}
+
+func (m *Admin) cmd_set_option(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 3)
+	if len(tokens) == 3 {
+		modkey := strings.SplitN(tokens[1], ".", 2)
+		for _, mod := range plugins {
+			if modkey[0] == mod.GetName() {
+				mod.SetOption(modkey[1], tokens[2])
+			}
+		}
 	}
 }

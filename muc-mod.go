@@ -109,3 +109,11 @@ func (m *Muc) Presence(pres xmpp.Presence) {
 
 func (m *Muc) Help() {
 }
+
+func (m *Muc) GetOptions() map[string]string {
+	return map[string]string{"name": "muc"}
+}
+
+func (m *Muc) SetOption(key, val string) {
+	println("[muc] set " + key + "=" + val)
+}

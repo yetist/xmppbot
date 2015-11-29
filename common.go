@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"sort"
 	"strings"
 )
 
@@ -47,6 +48,15 @@ func MapDelete(dict map[string]interface{}, key string) {
 	if ok {
 		delete(dict, key)
 	}
+}
+
+func SortMapKeys(dict map[string]string) []string {
+	keys := make([]string, 0, len(dict))
+	for key := range dict {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func ListDelete(list []string, key string) []string {
