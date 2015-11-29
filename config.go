@@ -36,7 +36,7 @@ type Config struct {
 		Resource      string
 		Port          int
 		Status        string
-		StatusMessage string
+		StatusMessage string `toml:"status_message"`
 	}
 	Plugin map[string]map[string]interface{}
 }

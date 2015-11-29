@@ -3,7 +3,9 @@ admin = ["yetist@gmail.com", "yetist@jabber.org"]
 debug = false
 notls = false
 session = false
-allowfriends = true
+auto_subscribe = true
+cmd_admin = "--sudo"
+cmd_help = "--help"
 
 [account]
 # jid = username@domain
@@ -15,7 +17,7 @@ server = "jabber.org"
 port = 5222
 # away, chat, dnd, xa.
 status = "chat"
-statusmessage = "hi, I am online."
+status_message = "hi, I am online."
 
 [plugin.chat]
 enable = true
