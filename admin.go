@@ -66,17 +66,20 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 	if msg.Type == "roster" {
 		fmt.Printf("%#v\n", msg.Roster)
 	}
-	if msg.Type != "chat" || len(msg.Text) == 0 {
+	if len(msg.Text) == 0 {
 		return
 	}
+	//if msg.Type != "chat" || len(msg.Text) == 0 {
+	//	return
+	//}
 
 	// 仅处理好友消息
 	if strings.HasPrefix(msg.Text, m.Option["help"]) {
-		//cmd := strings.TrimSpace(msg.Text[len("--help"):])
-		m.Help()
+		cmd := strings.TrimSpace(msg.Text[len(m.Option["help"]):])
+		m.HelpCommand(cmd, msg)
 	} else if strings.HasPrefix(msg.Text, m.Option["cmd"]) {
 		cmd := strings.TrimSpace(msg.Text[len(m.Option["cmd"]):])
-		m.Command(cmd, msg)
+		m.AdminCommand(cmd, msg)
 	}
 }
 
@@ -98,45 +101,57 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 func (m *Admin) Help() {
 }
 
-func (m *Admin) Command(cmd string, msg xmpp.Chat) {
+func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
+	if cmd == "" || cmd == "help" {
+		m.cmd_help(cmd, msg)
+	} else {
+		ReplyAuto(m.client, msg, "不支持的命令: "+cmd)
+	}
+}
+
+func (m *Admin) cmd_help(cmd string, msg xmpp.Chat) {
+	ReplyAuto(m.client, msg, "你输入了help命令")
+}
+
+func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 	if !IsAdmin(msg.Remote) {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "你不是管理员，无法执行管理员命令！"})
+		ReplyAuto(m.client, msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
 		return
 	}
 	if cmd == "" || cmd == "help" {
-		m.cmd_help(cmd, msg)
+		m.admin_help(cmd, msg)
 	} else if cmd == "restart" {
-		m.cmd_restart(cmd, msg)
+		m.admin_restart(cmd, msg)
 	} else if cmd == "list-all-plugins" {
-		m.cmd_list_all_plugins(cmd, msg)
+		m.admin_list_all_plugins(cmd, msg)
 	} else if cmd == "list-plugins" {
-		m.cmd_list_plugins(cmd, msg)
+		m.admin_list_plugins(cmd, msg)
 	} else if strings.HasPrefix(cmd, "disable ") {
-		m.cmd_disable_plugin(cmd, msg)
+		m.admin_disable_plugin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "enable ") {
-		m.cmd_enable_plugin(cmd, msg)
+		m.admin_enable_plugin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "subscribe ") {
-		m.cmd_subscribe(cmd, msg)
+		m.admin_subscribe(cmd, msg)
 	} else if strings.HasPrefix(cmd, "unsubscribe ") {
-		m.cmd_unsubscribe(cmd, msg)
+		m.admin_unsubscribe(cmd, msg)
 	} else if strings.HasPrefix(cmd, "status ") {
-		m.cmd_status(cmd, msg)
+		m.admin_status(cmd, msg)
 	} else if cmd == "list-admin" {
-		m.cmd_list_admin(cmd, msg)
+		m.admin_list_admin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "add-admin ") {
-		m.cmd_add_admin(cmd, msg)
+		m.admin_add_admin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "del-admin ") {
-		m.cmd_del_admin(cmd, msg)
+		m.admin_del_admin(cmd, msg)
 	} else if cmd == "list-options" {
-		m.cmd_list_options(cmd, msg)
+		m.admin_list_options(cmd, msg)
 	} else if strings.HasPrefix(cmd, "set-option ") {
-		m.cmd_set_option(cmd, msg)
+		m.admin_set_option(cmd, msg)
 	} else {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不支持的命令: " + cmd})
 	}
 }
 
-func (m *Admin) cmd_help(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 
 	help_msg := map[string]string{
 		"help":                        "显示本信息",
@@ -178,15 +193,15 @@ func (m *Admin) cmd_help(cmd string, msg xmpp.Chat) {
 	for _, k := range keys {
 		help_list = append(help_list, fmt.Sprintf("%s %s : %30s", m.Option["cmd"], k, help_msg[k]))
 	}
-	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: strings.Join(help_list, "\n")})
+	ReplyAuto(m.client, msg, strings.Join(help_list, "\n"))
 }
 
-func (m *Admin) cmd_restart(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_restart(cmd string, msg xmpp.Chat) {
 	m.Restart() //重启内置插件
 	PluginRestart(m.client)
 }
 
-func (m *Admin) cmd_list_all_plugins(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
 	var names []string
 	names = append(names, m.Name+"[内置]")
 	for name, v := range config.Plugin {
@@ -200,7 +215,7 @@ func (m *Admin) cmd_list_all_plugins(cmd string, msg xmpp.Chat) {
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Admin) cmd_list_plugins(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_list_plugins(cmd string, msg xmpp.Chat) {
 	var names []string
 	for _, v := range plugins {
 		names = append(names, v.GetName()+" -- "+v.GetSummary())
@@ -209,7 +224,7 @@ func (m *Admin) cmd_list_plugins(cmd string, msg xmpp.Chat) {
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Admin) cmd_disable_plugin(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_disable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if tokens[1] == m.Name {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: m.Name + "是内置模块，不允许禁用"})
@@ -218,12 +233,12 @@ func (m *Admin) cmd_disable_plugin(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Admin) cmd_enable_plugin(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_enable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	PluginAdd(tokens[1], m.client)
 }
 
-func (m *Admin) cmd_status(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
 	// cmd is "status chat 正在聊天中..."
 	var info = ""
 	tokens := strings.SplitN(cmd, " ", 3)
@@ -237,14 +252,14 @@ func (m *Admin) cmd_status(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Admin) cmd_subscribe(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		m.client.RequestSubscription(tokens[1])
 	}
 }
 
-func (m *Admin) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_unsubscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if IsAdmin(tokens[1]) {
@@ -255,7 +270,7 @@ func (m *Admin) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Admin) cmd_auto_subscribe(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_auto_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 {
 		switch strings.ToLower(tokens[1]) {
@@ -271,12 +286,12 @@ func (m *Admin) cmd_auto_subscribe(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Admin) cmd_list_admin(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_list_admin(cmd string, msg xmpp.Chat) {
 	txt := "==管理员列表==\n" + strings.Join(config.Bot.Admin, "\n")
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Admin) cmd_add_admin(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if IsAdmin(tokens[1]) {
@@ -291,7 +306,7 @@ func (m *Admin) cmd_add_admin(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Admin) cmd_del_admin(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	jid, _ := SplitJID(msg.Remote)
 	if IsAdmin(tokens[1]) && tokens[1] != jid {
@@ -302,7 +317,7 @@ func (m *Admin) cmd_del_admin(cmd string, msg xmpp.Chat) {
 	}
 }
 
-func (m *Admin) cmd_list_options(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
 	options := map[string]string{}
 	for _, mod := range plugins {
 		for k, v := range mod.GetOptions() {
@@ -319,7 +334,7 @@ func (m *Admin) cmd_list_options(cmd string, msg xmpp.Chat) {
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
-func (m *Admin) cmd_set_option(cmd string, msg xmpp.Chat) {
+func (m *Admin) admin_set_option(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 3)
 	if len(tokens) == 3 {
 		modkey := strings.SplitN(tokens[1], ".", 2)

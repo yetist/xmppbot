@@ -67,3 +67,28 @@ func ListDelete(list []string, key string) []string {
 	}
 	return list
 }
+
+// 回复好友消息，或聊天室私聊消息
+func ReplyAuto(client *xmpp.Client, recv xmpp.Chat, text string) {
+	client.Send(xmpp.Chat{Remote: recv.Remote, Type: "chat", Text: text})
+}
+
+// 回复好友消息，或聊天室公共消息
+func ReplyPub(client *xmpp.Client, recv xmpp.Chat, text string) {
+	if recv.Type == "groupchat" {
+		roomid, _ := SplitJID(recv.Remote)
+		client.Send(xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
+	} else {
+		ReplyAuto(client, recv, text)
+	}
+}
+
+// 发送到好友消息，或聊天室私聊消息
+func SendAuto(client *xmpp.Client, to, text string) {
+	client.Send(xmpp.Chat{Remote: to, Type: "chat", Text: text})
+}
+
+// 发送聊天室公共消息
+func SendPub(client *xmpp.Client, to, text string) {
+	client.Send(xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
+}
