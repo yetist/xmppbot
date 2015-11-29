@@ -4,6 +4,8 @@ import (
 	"github.com/mattn/go-xmpp"
 )
 
+var plugins []BotPlugin
+
 type BotPlugin interface {
 	GetName() string
 	GetSummary() string
@@ -12,12 +14,22 @@ type BotPlugin interface {
 	Chat(chat xmpp.Chat)
 	Presence(pres xmpp.Presence)
 	End()
+	Restart()
 	Help()
 }
 
-var plugins []BotPlugin
+// 新增模块在这里注册
+func CreatePlugin(name string, opt map[string]interface{}) BotPlugin {
+	var plugin BotPlugin
+	if name == "chat" {
+		plugin = NewChat(name, opt)
+	} else if name == "muc" {
+		plugin = NewMuc(name, opt)
+	}
+	return plugin
+}
 
-// 初始化并加载所有模块
+// Interface(), 初始化并加载所有模块
 func PluginInit() {
 	// 自动启用内置插件
 	plugins = append(plugins, NewSudo("sudo"))
@@ -32,28 +44,48 @@ func PluginInit() {
 	}
 }
 
-// 模块加载时的处理函数
+// Interface(), 模块加载时的处理函数
 func PluginBegin(client *xmpp.Client) {
 	for _, v := range plugins {
 		v.Begin(client)
 	}
 }
 
-// 模块卸载时的处理函数
+// Interface(), 模块卸载时的处理函数
 func PluginEnd() {
 	for _, v := range plugins {
 		v.End()
 	}
 }
 
-// 模块收到消息时的处理
+// Interface(), 重新载入并初始化各模块
+func PluginRestart(client *xmpp.Client) {
+	var disable_plugins []string
+
+	// 对正在运行中的插件，调用Restart接口重启
+	for name, _ := range config.Plugin {
+		for _, v := range plugins {
+			if name == v.GetName() {
+				v.Restart()
+				continue
+			}
+		}
+		disable_plugins = append(disable_plugins, name)
+	}
+	// 对禁用的插件，重新启用
+	for _, n := range disable_plugins {
+		PluginAdd(n, client)
+	}
+}
+
+// Interface(), 模块收到消息时的处理
 func PluginChat(chat xmpp.Chat) {
 	for _, v := range plugins {
 		v.Chat(chat)
 	}
 }
 
-// 模块收到Presence消息时的处理
+// Interface(), 模块收到Presence消息时的处理
 func PluginPresence(pres xmpp.Presence) {
 	for _, v := range plugins {
 		v.Presence(pres)
@@ -90,16 +122,6 @@ func PluginAdd(name string, client *xmpp.Client) {
 			}
 		}
 	}
-}
-
-func CreatePlugin(name string, opt map[string]interface{}) BotPlugin {
-	var plugin BotPlugin
-	if name == "chat" {
-		plugin = NewChat(name, opt)
-	} else if name == "muc" {
-		plugin = NewMuc(name, opt)
-	}
-	return plugin
 }
 
 ////////////////////////////////////////

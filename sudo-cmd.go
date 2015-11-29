@@ -11,12 +11,16 @@ type Sudo struct {
 	Name      string
 	CmdPrefix string
 	client    *xmpp.Client
+	Option    map[string]string
 }
 
 func NewSudo(name string) *Sudo {
 	return &Sudo{
-		Name:      name,
-		CmdPrefix: "--sudo",
+		Name: name,
+		Option: map[string]string{
+			"cmd":  config.Bot.AdminCmd,
+			"help": config.Bot.HelpCmd,
+		},
 	}
 }
 
@@ -25,7 +29,16 @@ func (m *Sudo) GetName() string {
 }
 
 func (m *Sudo) GetSummary() string {
-	return "管理员模块，提供" + m.CmdPrefix + "开头的命令响应[内置]"
+	return "管理员模块，提供" + m.Option["cmd"] + "开头的命令响应[内置]"
+}
+
+func (m *Sudo) GetOptions() map[string]string {
+	return m.Option
+}
+
+func (m *Sudo) SetOption(key, val string) {
+	// 如果有key的话，更新之
+	m.Option[key] = val
 }
 
 func (m *Sudo) CheckEnv() bool {
@@ -40,6 +53,14 @@ func (m *Sudo) Begin(client *xmpp.Client) {
 func (m *Sudo) End() {
 }
 
+func (m *Sudo) Restart() {
+	LoadConfig(appName, appCfg)
+	m.Option["cmd"] = config.Bot.AdminCmd
+	m.Option["help"] = config.Bot.HelpCmd
+	m.client.Roster()
+	SetStatus(m.client, config.Account.Status, config.Account.StatusMessage)
+}
+
 func (m *Sudo) Chat(msg xmpp.Chat) {
 	if msg.Type == "roster" {
 		fmt.Printf("%#v\n", msg.Roster)
@@ -49,23 +70,13 @@ func (m *Sudo) Chat(msg xmpp.Chat) {
 	}
 
 	// 仅处理好友消息
-	if strings.HasPrefix(msg.Text, "--help") {
+	if strings.HasPrefix(msg.Text, m.Option["help"]) {
 		//cmd := strings.TrimSpace(msg.Text[len("--help"):])
 		m.Help()
-	} else if strings.HasPrefix(msg.Text, m.CmdPrefix) {
-		cmd := strings.TrimSpace(msg.Text[len(m.CmdPrefix):])
+	} else if strings.HasPrefix(msg.Text, m.Option["cmd"]) {
+		cmd := strings.TrimSpace(msg.Text[len(m.Option["cmd"]):])
 		m.Command(cmd, msg)
 	}
-
-	/* 处理管理员命令 */
-	//cmds := strings.SplitN(msg.Text, " ", 2)
-	//if cmds[0] == m.CmdPrefix {
-	//	if len(cmds) >= 2 {
-	//		m.Command(cmds[1], msg)
-	//	} else {
-	//		m.cmd_help("", msg)
-	//	}
-	//}
 }
 
 func (m *Sudo) Presence(pres xmpp.Presence) {
@@ -74,7 +85,7 @@ func (m *Sudo) Presence(pres xmpp.Presence) {
 	}
 	//处理订阅消息
 	if pres.Type == "subscribe" {
-		if config.Bot.AllowFriends {
+		if config.Bot.AutoSubscribe {
 			m.client.ApproveSubscription(pres.From)
 			m.client.RequestSubscription(pres.From)
 		} else {
@@ -93,6 +104,8 @@ func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
 	}
 	if cmd == "" || cmd == "help" {
 		m.cmd_help(cmd, msg)
+	} else if cmd == "restart" {
+		m.cmd_restart(cmd, msg)
 	} else if cmd == "list-all-plugins" {
 		m.cmd_list_all_plugins(cmd, msg)
 	} else if cmd == "list-plugins" {
@@ -107,6 +120,12 @@ func (m *Sudo) Command(cmd string, msg xmpp.Chat) {
 		m.cmd_unsubscribe(cmd, msg)
 	} else if strings.HasPrefix(cmd, "status ") {
 		m.cmd_status(cmd, msg)
+	} else if cmd == "list-admin" {
+		m.cmd_list_admin(cmd, msg)
+	} else if strings.HasPrefix(cmd, "add-admin ") {
+		m.cmd_add_admin(cmd, msg)
+	} else if strings.HasPrefix(cmd, "del-admin ") {
+		m.cmd_del_admin(cmd, msg)
 		//} else if cmd == "list-friends" {
 		//	m.cmd_list_friends(cmd, msg)
 	} else {
@@ -118,6 +137,7 @@ func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 
 	help_msg := map[string]string{
 		"help":                        "显示本信息",
+		"restart":                     "重新载入配置文件，初始化各模块",
 		"list-all-plugins":            "列出所有的模块(管理员命令)",
 		"list-plugins":                "列出当前启用的模块(管理员命令)",
 		"disable <Plugin>":            "禁用某模块(管理员命令)",
@@ -126,7 +146,9 @@ func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 		"subscribe <jid>":             "请求加<jid>为好友",
 		"unsubscribe <jid>":           "不再信认<jid>为好友",
 		"auto-subscribe <true|false>": "是否自动完成互加好友",
-		"new-admin <jid>":             "新增管理员帐号",
+		"list-admin":                  "列出管理员帐号",
+		"add-admin <jid>":             "新增管理员帐号",
+		"del-admin <jid>":             "新增管理员帐号",
 
 		//"show config" : "",
 
@@ -149,9 +171,14 @@ func (m *Sudo) cmd_help(cmd string, msg xmpp.Chat) {
 	var help_list []string
 	help_list = append(help_list, "==管理员命令==")
 	for _, k := range keys {
-		help_list = append(help_list, fmt.Sprintf("%s %s : %30s", m.CmdPrefix, k, help_msg[k]))
+		help_list = append(help_list, fmt.Sprintf("%s %s : %30s", m.Option["cmd"], k, help_msg[k]))
 	}
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: strings.Join(help_list, "\n")})
+}
+
+func (m *Sudo) cmd_restart(cmd string, msg xmpp.Chat) {
+	m.Restart() //重启内置插件
+	PluginRestart(m.client)
 }
 
 func (m *Sudo) cmd_list_all_plugins(cmd string, msg xmpp.Chat) {
@@ -191,6 +218,20 @@ func (m *Sudo) cmd_enable_plugin(cmd string, msg xmpp.Chat) {
 	PluginAdd(tokens[1], m.client)
 }
 
+func (m *Sudo) cmd_status(cmd string, msg xmpp.Chat) {
+	// cmd is "status chat 正在聊天中..."
+	var info = ""
+	tokens := strings.SplitN(cmd, " ", 3)
+	if len(tokens) == 3 {
+		info = tokens[2]
+	}
+	if IsValidStatus(tokens[1]) {
+		SetStatus(m.client, tokens[1], info)
+	} else {
+		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "设置状态失败，有效的状态为: away, chat, dnd, xa."})
+	}
+}
+
 func (m *Sudo) cmd_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
@@ -209,20 +250,50 @@ func (m *Sudo) cmd_unsubscribe(cmd string, msg xmpp.Chat) {
 	}
 }
 
-//func (m *Sudo) cmd_list_friends(cmd string, msg xmpp.Chat) {
-//	m.client.Roster()
-//}
-
-func (m *Sudo) cmd_status(cmd string, msg xmpp.Chat) {
-	// cmd is "status chat 正在聊天中..."
-	var info = ""
-	tokens := strings.SplitN(cmd, " ", 3)
-	if len(tokens) == 3 {
-		info = tokens[2]
+func (m *Sudo) cmd_auto_subscribe(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 2)
+	if len(tokens) == 2 {
+		switch strings.ToLower(tokens[1]) {
+		case
+			"y",
+			"yes",
+			"1",
+			"true",
+			"T":
+			return true
+			config.Bot.AutoSubscribe = true
+		}
+		config.Bot.AutoSubscribe = false
 	}
-	if IsValidStatus(tokens[1]) {
-		m.client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", tokens[1], info))
+}
+
+func (m *Sudo) cmd_list_admin(cmd string, msg xmpp.Chat) {
+	txt := "==管理员列表==\n" + strings.Join(config.Bot.Admin, "\n")
+	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
+}
+
+func (m *Sudo) cmd_add_admin(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 2)
+	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
+		if IsAdmin(tokens[1]) {
+			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: tokens[1] + " 已是管理员用户，不需再次增加！"})
+		} else {
+			m.client.RequestSubscription(tokens[1])
+			config.Bot.Admin = append(config.Bot.Admin, tokens[1])
+			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "您已添加 " + tokens[1] + "为管理员!"})
+			jid, _ := SplitJID(msg.Remote)
+			m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时添加您为管理员!"})
+		}
+	}
+}
+
+func (m *Sudo) cmd_del_admin(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 2)
+	jid, _ := SplitJID(msg.Remote)
+	if IsAdmin(tokens[1]) && tokens[1] != jid {
+		config.Bot.Admin = ListDelete(config.Bot.Admin, tokens[1])
+		m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时取消了您的管理员身份!"})
 	} else {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "设置状态失败，有效的状态为: away, chat, dnd, xa."})
+		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不能取消 " + tokens[1] + " 的管理员身份!"})
 	}
 }

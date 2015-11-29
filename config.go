@@ -11,13 +11,22 @@ import (
 	"strings"
 )
 
+const (
+	appName = "xmppbot"
+	appCfg  = "xmppbot.toml"
+)
+
+var config Config
+
 type Config struct {
 	Bot struct {
-		Admin        []string
-		Debug        bool
-		NoTLS        bool
-		Session      bool
-		AllowFriends bool
+		Admin         []string
+		Debug         bool
+		NoTLS         bool
+		Session       bool
+		AutoSubscribe bool   `toml:"auto_subscribe"`
+		AdminCmd      string `toml:"cmd_admin"`
+		HelpCmd       string `toml:"cmd_help"`
 	}
 	Account struct {
 		Username      string
@@ -32,10 +41,8 @@ type Config struct {
 	Plugin map[string]map[string]interface{}
 }
 
-var config Config
-
 func init() {
-	LoadConfig("xmppbot", "", "xmppbot.toml")
+	LoadConfig(appName, appCfg)
 }
 
 func ExecPath() (string, error) {

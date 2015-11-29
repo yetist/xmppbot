@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/mattn/go-xmpp"
 	"strings"
 )
 
@@ -33,4 +35,25 @@ func IsValidStatus(status string) bool {
 		return true
 	}
 	return false
+}
+
+// 设置状态消息
+func SetStatus(client *xmpp.Client, status, info string) {
+	client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", status, info))
+}
+
+func MapDelete(dict map[string]interface{}, key string) {
+	_, ok := dict[key]
+	if ok {
+		delete(dict, key)
+	}
+}
+
+func ListDelete(list []string, key string) []string {
+	for k, v := range list {
+		if v == key {
+			list = append(list[:k], list[k+1:]...)
+		}
+	}
+	return list
 }

@@ -68,6 +68,27 @@ func (m *Muc) End() {
 	}
 }
 
+func (m *Muc) Restart() {
+	m.End()
+
+	var rooms []RoomOption
+	v := config.Plugin[m.GetName()]
+	for _, i := range v["rooms"].([]map[string]interface{}) {
+		room := RoomOption{
+			JID:      i["jid"].(string),
+			Nickname: i["nickname"].(string),
+			RoomLog:  i["room_log"].(bool),
+		}
+		if i["password"] != nil {
+			room.Password = i["password"].(string)
+		}
+		rooms = append(rooms, room)
+	}
+	m.Rooms = rooms
+
+	m.Begin(m.client)
+}
+
 func (m *Muc) Chat(msg xmpp.Chat) {
 	if msg.Type != "groupchat" || len(msg.Text) == 0 {
 		return

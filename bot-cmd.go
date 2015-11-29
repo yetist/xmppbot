@@ -39,6 +39,9 @@ func (m *Chat) Begin(client *xmpp.Client) {
 func (m *Chat) End() {
 }
 
+func (m *Chat) Restart() {
+}
+
 func (m *Chat) Chat(msg xmpp.Chat) {
 	//if msg.Type != "chat" || len(msg.Text) == 0 {
 	//	return
