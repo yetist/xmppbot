@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
-	"strings"
 )
 
 type RoomOption struct {
@@ -99,9 +98,8 @@ func (m *Muc) Chat(msg xmpp.Chat) {
 			return
 		}
 	}
-
-	tokens := strings.SplitN(msg.Remote, "/", 2)
-	m.client.Send(xmpp.Chat{Remote: tokens[0], Type: "groupchat", Text: tokens[1] + " said: " + msg.Text})
+	roomid, nick := SplitJID(msg.Remote)
+	SendPub(m.client, roomid, nick+" said: "+msg.Text)
 }
 
 func (m *Muc) Presence(pres xmpp.Presence) {

@@ -18,8 +18,8 @@ func NewAdmin(name string) *Admin {
 	return &Admin{
 		Name: name,
 		Option: map[string]string{
-			"cmd":  config.Bot.AdminCmd,
-			"help": config.Bot.HelpCmd,
+			"cmd":  config.Setup.AdminCmd,
+			"help": config.Setup.HelpCmd,
 		},
 	}
 }
@@ -56,10 +56,10 @@ func (m *Admin) End() {
 
 func (m *Admin) Restart() {
 	LoadConfig(AppName, AppVersion, AppConfig)
-	m.Option["cmd"] = config.Bot.AdminCmd
-	m.Option["help"] = config.Bot.HelpCmd
+	m.Option["cmd"] = config.Setup.AdminCmd
+	m.Option["help"] = config.Setup.HelpCmd
 	m.client.Roster()
-	SetStatus(m.client, config.Account.Status, config.Account.StatusMessage)
+	SetStatus(m.client, config.Setup.Status, config.Setup.StatusMessage)
 }
 
 func (m *Admin) Chat(msg xmpp.Chat) {
@@ -84,12 +84,12 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 }
 
 func (m *Admin) Presence(pres xmpp.Presence) {
-	if config.Bot.Debug {
+	if config.Setup.Debug {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
 	//处理订阅消息
 	if pres.Type == "subscribe" {
-		if config.Bot.AutoSubscribe {
+		if config.Setup.AutoSubscribe {
 			m.client.ApproveSubscription(pres.From)
 			m.client.RequestSubscription(pres.From)
 		} else {
@@ -280,14 +280,14 @@ func (m *Admin) admin_auto_subscribe(cmd string, msg xmpp.Chat) {
 			"1",
 			"true",
 			"T":
-			config.Bot.AutoSubscribe = true
+			config.Setup.AutoSubscribe = true
 		}
-		config.Bot.AutoSubscribe = false
+		config.Setup.AutoSubscribe = false
 	}
 }
 
 func (m *Admin) admin_list_admin(cmd string, msg xmpp.Chat) {
-	txt := "==管理员列表==\n" + strings.Join(config.Bot.Admin, "\n")
+	txt := "==管理员列表==\n" + strings.Join(config.Setup.Admin, "\n")
 	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
 }
 
@@ -298,7 +298,7 @@ func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: tokens[1] + " 已是管理员用户，不需再次增加！"})
 		} else {
 			m.client.RequestSubscription(tokens[1])
-			config.Bot.Admin = append(config.Bot.Admin, tokens[1])
+			config.Setup.Admin = append(config.Setup.Admin, tokens[1])
 			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "您已添加 " + tokens[1] + "为管理员!"})
 			jid, _ := SplitJID(msg.Remote)
 			m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时添加您为管理员!"})
@@ -310,7 +310,7 @@ func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	jid, _ := SplitJID(msg.Remote)
 	if IsAdmin(tokens[1]) && tokens[1] != jid {
-		config.Bot.Admin = ListDelete(config.Bot.Admin, tokens[1])
+		config.Setup.Admin = ListDelete(config.Setup.Admin, tokens[1])
 		m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时取消了您的管理员身份!"})
 	} else {
 		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不能取消 " + tokens[1] + " 的管理员身份!"})

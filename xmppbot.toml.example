@@ -1,23 +1,32 @@
-[bot]
-admin = ["yetist@gmail.com", "yetist@jabber.org"]
-debug = false
-notls = false
-session = false
-auto_subscribe = true
-cmd_admin = "--sudo"
-cmd_help = "--help"
-
 [account]
-# jid = username@domain
-domain = "jabber.org"
-username = "bot"
+username = "bot@jabber.org"
 password = ""
 resource = "bot"
 server = "jabber.org"
 port = 5222
-# away, chat, dnd, xa.
-status = "chat"
+notls = false
+session = false #如果不清楚，请设置为false
+
+[setup]
+admin = ["yetist@gmail.com", "yetist@jabber.org"]
+debug = false
+auto_subscribe = true
+cmd_admin = "--sudo"
+cmd_help = "--help"
+status = "chat" # away, chat, dnd, xa.
 status_message = "hi, I am online."
+
+[[setup.rooms]]
+jid = "test@groups.isoft-linux.org"
+nickname = "xmppdob"
+#password = ""
+room_log = true
+
+[[setup.rooms]]
+jid = "auth@groups.isoft-linux.org"
+nickname = "bot"
+password = "abc123"
+room_log = true
 
 [plugin.chat]
 enable = true

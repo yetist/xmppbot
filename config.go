@@ -20,24 +20,24 @@ const (
 var config Config
 
 type Config struct {
-	Bot struct {
+	Account struct {
+		Username string
+		Password string
+		Resource string
+		Server   string
+		Port     int
+		NoTLS    bool
+		Session  bool
+	}
+	Setup struct {
 		Admin         []string
 		Debug         bool
-		NoTLS         bool
-		Session       bool
 		AutoSubscribe bool   `toml:"auto_subscribe"`
 		AdminCmd      string `toml:"cmd_admin"`
 		HelpCmd       string `toml:"cmd_help"`
-	}
-	Account struct {
-		Username      string
-		Password      string
-		Domain        string
-		Server        string
-		Resource      string
-		Port          int
 		Status        string
 		StatusMessage string `toml:"status_message"`
+		Rooms         []map[string]interface{}
 	}
 	Plugin map[string]map[string]interface{}
 }

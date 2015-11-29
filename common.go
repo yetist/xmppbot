@@ -18,7 +18,7 @@ func SplitJID(jid string) (string, string) {
 
 func IsAdmin(jid string) bool {
 	u, _ := SplitJID(jid)
-	for _, admin := range config.Bot.Admin {
+	for _, admin := range config.Setup.Admin {
 		if u == admin {
 			return true
 		}
