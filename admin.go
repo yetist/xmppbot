@@ -8,15 +8,28 @@ import (
 )
 
 type Admin struct {
-	Name      string
-	CmdPrefix string
-	client    *xmpp.Client
-	Option    map[string]string
+	Name   string
+	client *xmpp.Client
+	Option map[string]string
+	Rooms  []RoomOption
 }
 
 func NewAdmin(name string) *Admin {
+	var rooms []RoomOption
+	for _, i := range config.Setup.Rooms {
+		room := RoomOption{
+			JID:      i["jid"].(string),
+			Nickname: i["nickname"].(string),
+			RoomLog:  i["room_log"].(bool),
+		}
+		if i["password"] != nil {
+			room.Password = i["password"].(string)
+		}
+		rooms = append(rooms, room)
+	}
 	return &Admin{
-		Name: name,
+		Name:  name,
+		Rooms: rooms,
 		Option: map[string]string{
 			"cmd":  config.Setup.AdminCmd,
 			"help": config.Setup.HelpCmd,
@@ -33,7 +46,15 @@ func (m *Admin) GetSummary() string {
 }
 
 func (m *Admin) GetOptions() map[string]string {
-	return m.Option
+	opts := map[string]string{}
+	for k, v := range m.Option {
+		if k == "cmd" {
+			opts[k] = v + "  (管理员命令前缀)"
+		} else if k == "help" {
+			opts[k] = v + "  (帮助命令前缀)"
+		}
+	}
+	return opts
 }
 
 func (m *Admin) SetOption(key, val string) {
@@ -48,18 +69,46 @@ func (m *Admin) CheckEnv() bool {
 
 func (m *Admin) Begin(client *xmpp.Client) {
 	m.client = client
-	m.client.Roster()
+	//m.client.Roster()
+	for _, room := range m.Rooms {
+		if len(room.Password) > 0 {
+			m.client.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
+		} else {
+			m.client.JoinMUC(room.JID, room.Nickname)
+		}
+		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)
+	}
 }
 
 func (m *Admin) End() {
+	for _, room := range m.Rooms {
+		m.client.LeaveMUC(room.JID)
+		fmt.Printf("[%s] Leave from %s\n", m.Name, room.JID)
+	}
 }
 
 func (m *Admin) Restart() {
+	m.End()
 	LoadConfig(AppName, AppVersion, AppConfig)
 	m.Option["cmd"] = config.Setup.AdminCmd
 	m.Option["help"] = config.Setup.HelpCmd
 	m.client.Roster()
 	SetStatus(m.client, config.Setup.Status, config.Setup.StatusMessage)
+
+	var rooms []RoomOption
+	v := config.Plugin[m.GetName()]
+	for _, i := range v["rooms"].([]map[string]interface{}) {
+		room := RoomOption{
+			JID:      i["jid"].(string),
+			Nickname: i["nickname"].(string),
+			RoomLog:  i["room_log"].(bool),
+		}
+		if i["password"] != nil {
+			room.Password = i["password"].(string)
+		}
+		rooms = append(rooms, room)
+	}
+	m.Rooms = rooms
 }
 
 func (m *Admin) Chat(msg xmpp.Chat) {
@@ -69,6 +118,7 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 {
 		return
 	}
+
 	//if msg.Type != "chat" || len(msg.Text) == 0 {
 	//	return
 	//}
@@ -99,6 +149,37 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 }
 
 func (m *Admin) Help() {
+}
+
+func (m *Admin) IsBotSend(msg xmpp.Chat) bool {
+	if msg.Type == "chat" {
+		jid, _ := SplitJID(msg.Remote)
+		if config.Account.Username == jid {
+			return true
+		}
+	} else if msg.Type == "groupchat" {
+		// 消息是由bot自己发出的吗？
+		for _, v := range m.Rooms {
+			if msg.Remote == v.JID+"/"+v.Nickname {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// bot 被在聊天室点名了吗？
+func (m *Admin) IsNotifyBot(msg xmpp.Chat) bool {
+	if msg.Type == "chat" {
+		return false
+	} else if msg.Type == "groupchat" {
+		for _, v := range m.Rooms {
+			if strings.Contains(msg.Text, v.Nickname) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
@@ -147,7 +228,7 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 	} else if strings.HasPrefix(cmd, "set-option ") {
 		m.admin_set_option(cmd, msg)
 	} else {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不支持的命令: " + cmd})
+		ReplyAuto(m.client, msg, "不支持的命令: "+cmd)
 	}
 }
 
@@ -212,7 +293,7 @@ func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
 		}
 	}
 	txt := "==所有插件列表==\n" + strings.Join(names, "\n")
-	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
+	ReplyAuto(m.client, msg, txt)
 }
 
 func (m *Admin) admin_list_plugins(cmd string, msg xmpp.Chat) {
@@ -221,13 +302,13 @@ func (m *Admin) admin_list_plugins(cmd string, msg xmpp.Chat) {
 		names = append(names, v.GetName()+" -- "+v.GetSummary())
 	}
 	txt := "==运行中插件列表==\n" + strings.Join(names, "\n")
-	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
+	ReplyAuto(m.client, msg, txt)
 }
 
 func (m *Admin) admin_disable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if tokens[1] == m.Name {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: m.Name + "是内置模块，不允许禁用"})
+		ReplyAuto(m.client, msg, m.Name+"是内置模块，不允许禁用")
 	} else {
 		PluginRemove(tokens[1])
 	}
@@ -248,7 +329,7 @@ func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
 	if IsValidStatus(tokens[1]) {
 		SetStatus(m.client, tokens[1], info)
 	} else {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "设置状态失败，有效的状态为: away, chat, dnd, xa."})
+		ReplyAuto(m.client, msg, "设置状态失败，有效的状态为: away, chat, dnd, xa.")
 	}
 }
 
@@ -263,7 +344,7 @@ func (m *Admin) admin_unsubscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if IsAdmin(tokens[1]) {
-			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: tokens[1] + "是管理员，不允许从好友中删除！"})
+			ReplyAuto(m.client, msg, tokens[1]+"是管理员，不允许从好友中删除！")
 		} else {
 			m.client.RevokeSubscription(tokens[1])
 		}
@@ -288,20 +369,20 @@ func (m *Admin) admin_auto_subscribe(cmd string, msg xmpp.Chat) {
 
 func (m *Admin) admin_list_admin(cmd string, msg xmpp.Chat) {
 	txt := "==管理员列表==\n" + strings.Join(config.Setup.Admin, "\n")
-	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
+	ReplyAuto(m.client, msg, txt)
 }
 
 func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if IsAdmin(tokens[1]) {
-			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: tokens[1] + " 已是管理员用户，不需再次增加！"})
+			ReplyAuto(m.client, msg, tokens[1]+" 已是管理员用户，不需再次增加！")
 		} else {
 			m.client.RequestSubscription(tokens[1])
 			config.Setup.Admin = append(config.Setup.Admin, tokens[1])
-			m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "您已添加 " + tokens[1] + "为管理员!"})
+			ReplyAuto(m.client, msg, "您已添加 "+tokens[1]+"为管理员!")
 			jid, _ := SplitJID(msg.Remote)
-			m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时添加您为管理员!"})
+			SendAuto(m.client, tokens[1], jid+" 临时添加您为管理员!")
 		}
 	}
 }
@@ -311,9 +392,9 @@ func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	jid, _ := SplitJID(msg.Remote)
 	if IsAdmin(tokens[1]) && tokens[1] != jid {
 		config.Setup.Admin = ListDelete(config.Setup.Admin, tokens[1])
-		m.client.Send(xmpp.Chat{Remote: tokens[1], Type: "chat", Text: jid + " 临时取消了您的管理员身份!"})
+		SendAuto(m.client, tokens[1], jid+" 临时取消了您的管理员身份!")
 	} else {
-		m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: "不能取消 " + tokens[1] + " 的管理员身份!"})
+		ReplyAuto(m.client, msg, "不能取消 "+tokens[1]+" 的管理员身份!")
 	}
 }
 
@@ -331,7 +412,7 @@ func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
 		opt_list = append(opt_list, fmt.Sprintf("%s : %15s", v, options[v]))
 	}
 	txt := "==所有模块可配置选项==\n" + strings.Join(opt_list, "\n")
-	m.client.Send(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: txt})
+	ReplyAuto(m.client, msg, txt)
 }
 
 func (m *Admin) admin_set_option(cmd string, msg xmpp.Chat) {

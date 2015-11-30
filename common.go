@@ -38,6 +38,20 @@ func IsValidStatus(status string) bool {
 	return false
 }
 
+func StringToBool(val string) bool {
+	switch strings.ToLower(val) {
+	case
+		"1",
+		"true",
+		"t",
+		"y",
+		"yes",
+		"ok":
+		return true
+	}
+	return false
+}
+
 // 设置状态消息
 func SetStatus(client *xmpp.Client, status, info string) {
 	client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", status, info))

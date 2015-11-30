@@ -157,3 +157,20 @@ func LoadConfig(name, version, cfgname string) (err error) {
 	}
 	return nil
 }
+
+func GetDataPath(datafile string) string {
+	syspath := path.Join(sysConfigDir(AppName, AppVersion), "data", datafile)
+	userpath := path.Join(userConfigDir(AppName, AppVersion), "data", datafile)
+	selfpath := path.Join(selfConfigDir(), "data", datafile)
+	cwdpath := path.Join(cwdDir(), "data", datafile)
+	if IsFile(cwdpath) {
+		return cwdpath
+	} else if IsFile(selfpath) {
+		return selfpath
+	} else if IsFile(userpath) {
+		return userpath
+	} else if IsFile(syspath) {
+		return syspath
+	}
+	return ""
+}

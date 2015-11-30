@@ -4,9 +4,10 @@ import (
 	"github.com/mattn/go-xmpp"
 )
 
-var plugins []BotPlugin
+var plugins []BotInterface
+var admin_plugin AdminInterface
 
-type BotPlugin interface {
+type BotInterface interface {
 	Help()
 	GetName() string
 	GetSummary() string
@@ -20,11 +21,16 @@ type BotPlugin interface {
 	SetOption(key, val string)
 }
 
+type AdminInterface interface {
+	IsBotSend(msg xmpp.Chat) bool
+	IsNotifyBot(msg xmpp.Chat) bool
+}
+
 // 新增模块在这里注册
-func CreatePlugin(name string, opt map[string]interface{}) BotPlugin {
-	var plugin BotPlugin
-	if name == "chat" {
-		plugin = NewChat(name, opt)
+func CreatePlugin(name string, opt map[string]interface{}) BotInterface {
+	var plugin BotInterface
+	if name == "auto-reply" {
+		plugin = NewAutoReply(name, opt)
 	} else if name == "muc" {
 		plugin = NewMuc(name, opt)
 	}
@@ -34,7 +40,9 @@ func CreatePlugin(name string, opt map[string]interface{}) BotPlugin {
 // Interface(), 初始化并加载所有模块
 func PluginInit() {
 	// 自动启用内置插件
-	plugins = append(plugins, NewAdmin("admin"))
+	admin := NewAdmin("admin")
+	plugins = append(plugins, admin)
+	admin_plugin = admin
 
 	for name, v := range config.Plugin {
 		if v["enable"].(bool) { //模块是否被启用
@@ -92,6 +100,11 @@ func PluginPresence(pres xmpp.Presence) {
 	for _, v := range plugins {
 		v.Presence(pres)
 	}
+}
+
+//获取管理员模块
+func GetAdminPlugin() AdminInterface {
+	return admin_plugin
 }
 
 // 按名称卸载某个模块

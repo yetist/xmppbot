@@ -17,18 +17,19 @@ status = "chat" # away, chat, dnd, xa.
 status_message = "hi, I am online."
 
 [[setup.rooms]]
-jid = "test@groups.isoft-linux.org"
-nickname = "xmppdob"
+jid = "linuxcn@conference.jabber.org"
+nickname = "bot"
 #password = ""
 room_log = true
 
 [[setup.rooms]]
-jid = "auth@groups.isoft-linux.org"
+jid = "linuxcn@conference.jaim.org"
 nickname = "bot"
-password = "abc123"
+#password = ""
 room_log = true
 
-[plugin.chat]
+######## 插件配置项 ########
+[plugin.auto-reply]
 enable = true
 fuck = "fuck.txt"
 random = "random.txt"
@@ -36,17 +37,3 @@ random = "random.txt"
 [plugin.ip]
 enable = true
 db = "qqwrt.dat"
-
-# 聊天室设置
-[plugin.muc]
-enable = true
-[[plugin.muc.rooms]]
-jid = "linuxcn@conference.jabber.org"
-nickname = "bot"
-#password = ""
-room_log = true
-[[plugin.muc.rooms]]
-jid = "linuxcn@conference.jaim.org"
-nickname = "bot"
-#password = ""
-room_log = true
