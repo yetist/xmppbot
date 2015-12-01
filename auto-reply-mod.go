@@ -79,11 +79,12 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
 			admin := GetAdminPlugin()
+			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
-			if admin.IsBotSend(msg) {
+			if IsBotSend(rooms, msg) {
 				return
 			}
-			if !admin.IsNotifyBot(msg) {
+			if !IsNotifyBot(rooms, msg) {
 				return
 			}
 			roomid, _ := SplitJID(msg.Remote)

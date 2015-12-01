@@ -7,17 +7,24 @@ import (
 	"strings"
 )
 
+type RoomInfo struct {
+	JID      string
+	Nickname string
+	Password string
+	RoomLog  bool
+}
+
 type Admin struct {
 	Name   string
 	client *xmpp.Client
 	Option map[string]string
-	Rooms  []RoomOption
+	Rooms  []RoomInfo
 }
 
 func NewAdmin(name string) *Admin {
-	var rooms []RoomOption
+	var rooms []RoomInfo
 	for _, i := range config.Setup.Rooms {
-		room := RoomOption{
+		room := RoomInfo{
 			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
 			RoomLog:  i["room_log"].(bool),
@@ -95,10 +102,9 @@ func (m *Admin) Restart() {
 	m.client.Roster()
 	SetStatus(m.client, config.Setup.Status, config.Setup.StatusMessage)
 
-	var rooms []RoomOption
-	v := config.Plugin[m.GetName()]
-	for _, i := range v["rooms"].([]map[string]interface{}) {
-		room := RoomOption{
+	var rooms []RoomInfo
+	for _, i := range config.Setup.Rooms {
+		room := RoomInfo{
 			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
 			RoomLog:  i["room_log"].(bool),
@@ -151,35 +157,8 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 func (m *Admin) Help() {
 }
 
-func (m *Admin) IsBotSend(msg xmpp.Chat) bool {
-	if msg.Type == "chat" {
-		jid, _ := SplitJID(msg.Remote)
-		if config.Account.Username == jid {
-			return true
-		}
-	} else if msg.Type == "groupchat" {
-		// 消息是由bot自己发出的吗？
-		for _, v := range m.Rooms {
-			if msg.Remote == v.JID+"/"+v.Nickname {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// bot 被在聊天室点名了吗？
-func (m *Admin) IsNotifyBot(msg xmpp.Chat) bool {
-	if msg.Type == "chat" {
-		return false
-	} else if msg.Type == "groupchat" {
-		for _, v := range m.Rooms {
-			if strings.Contains(msg.Text, v.Nickname) {
-				return true
-			}
-		}
-	}
-	return false
+func (m *Admin) GetRooms() []RoomInfo {
+	return m.Rooms
 }
 
 func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
@@ -227,6 +206,8 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 		m.admin_list_options(cmd, msg)
 	} else if strings.HasPrefix(cmd, "set-option ") {
 		m.admin_set_option(cmd, msg)
+	} else if cmd == "list-rooms" {
+		m.admin_list_rooms(cmd, msg)
 	} else {
 		ReplyAuto(m.client, msg, "不支持的命令: "+cmd)
 	}
@@ -251,16 +232,17 @@ func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 		"list-options":                "列出所有模块可配置选项",
 		"set-option <field> <value>":  "设置模块相关选项",
 
+		//"list-rooms" : "",
+		//"join-room <jid> <nickname> <log>" : "",
+		//"leave-room <jid>" : "",
+
 		//"show config" : "",
 
 		//"list-fields" : "",
 		//"get <field>" : "",
 		//"set <field> <value>" : "",
-
 		//"list-friends" : "",
-		//"list-rooms" : "",
-		//"join-room <jid> <nickname> <log>" : "",
-		//"leave-room <jid>" : "",
+
 	}
 
 	keys := make([]string, 0, len(help_msg))
@@ -425,4 +407,12 @@ func (m *Admin) admin_set_option(cmd string, msg xmpp.Chat) {
 			}
 		}
 	}
+}
+func (m *Admin) admin_list_rooms(cmd string, msg xmpp.Chat) {
+	var opt_list []string
+	for k, v := range m.Rooms {
+		opt_list = append(opt_list, fmt.Sprintf("%2d: %s as %s", k+1, v.JID, v.Nickname))
+	}
+	txt := "==聊天室列表==\n" + strings.Join(opt_list, "\n")
+	ReplyAuto(m.client, msg, txt)
 }

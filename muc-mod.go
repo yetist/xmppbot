@@ -5,23 +5,16 @@ import (
 	"github.com/mattn/go-xmpp"
 )
 
-type RoomOption struct {
-	JID      string
-	Nickname string
-	Password string
-	RoomLog  bool
-}
-
 type Muc struct {
 	Name   string
-	Rooms  []RoomOption
+	Rooms  []RoomInfo
 	client *xmpp.Client
 }
 
 func NewMuc(name string, opt map[string]interface{}) *Muc {
-	var rooms []RoomOption
+	var rooms []RoomInfo
 	for _, i := range opt["rooms"].([]map[string]interface{}) {
-		room := RoomOption{
+		room := RoomInfo{
 			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
 			RoomLog:  i["room_log"].(bool),
@@ -70,10 +63,10 @@ func (m *Muc) End() {
 func (m *Muc) Restart() {
 	m.End()
 
-	var rooms []RoomOption
+	var rooms []RoomInfo
 	v := config.Plugin[m.GetName()]
 	for _, i := range v["rooms"].([]map[string]interface{}) {
-		room := RoomOption{
+		room := RoomInfo{
 			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
 			RoomLog:  i["room_log"].(bool),

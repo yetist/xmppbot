@@ -22,8 +22,7 @@ type BotInterface interface {
 }
 
 type AdminInterface interface {
-	IsBotSend(msg xmpp.Chat) bool
-	IsNotifyBot(msg xmpp.Chat) bool
+	GetRooms() []RoomInfo
 }
 
 // 新增模块在这里注册
