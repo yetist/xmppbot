@@ -172,6 +172,7 @@ func (m *Admin) Restart() {
 		rooms = append(rooms, room)
 	}
 	m.Rooms = rooms
+	m.Begin(m.client)
 }
 
 func (m *Admin) Chat(msg xmpp.Chat) {
