@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"strings"
+	"time"
 )
 
 type AutoReply struct {
@@ -50,7 +51,7 @@ func (m *AutoReply) CheckEnv() bool {
 
 func (m *AutoReply) Begin(client *xmpp.Client) {
 	m.client = client
-	rand.Seed(42)
+	rand.Seed(time.Now().Unix())
 
 	if data, err := ioutil.ReadFile(GetDataPath(m.Fuck)); err == nil {
 		m.FuckList = strings.Split(string(data), "\n")
@@ -72,9 +73,14 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 {
 		return
 	}
+
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			ReplyAuto(m.client, msg, m.RandomList[rand.Intn(len(m.RandomList))])
+			if msg.Text == "--fuck" {
+				ReplyAuto(m.client, msg, m.FuckList[rand.Intn(len(m.FuckList))])
+			} else {
+				ReplyAuto(m.client, msg, m.RandomList[rand.Intn(len(m.RandomList))])
+			}
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
@@ -83,6 +89,10 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 			//忽略bot自己发送的消息
 			if IsBotSend(rooms, msg) {
 				return
+			}
+			if msg.Text == "--fuck" {
+				roomid, nick := SplitJID(msg.Remote)
+				SendPub(m.client, roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
 			if !IsNotifyBot(rooms, msg) {
 				return
@@ -96,21 +106,22 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 func (m *AutoReply) Presence(pres xmpp.Presence) {
 }
 
-func (m *AutoReply) Help() {
+func (m *AutoReply) Help() string {
+	msg := []string{
+		"AutoReply模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
+		"支持以下命令：",
+		"--fuck 无聊透顶的命令，慎用",
+	}
+	return strings.Join(msg, "\n")
 }
 
 func (m *AutoReply) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
-		if v {
-			opts[k] = "true"
-		} else {
-			opts[k] = "false"
-		}
 		if k == "chat" {
-			opts[k] = opts[k] + "  (是否在好友间启用随机回复)"
+			opts[k] = BoolToString(v) + "  (是否在好友间启用随机回复)"
 		} else if k == "room" {
-			opts[k] = opts[k] + "  (是否在群聊时启用随机回复)"
+			opts[k] = BoolToString(v) + "  (是否在群聊时启用随机回复)"
 		}
 	}
 	return opts

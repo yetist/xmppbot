@@ -8,7 +8,7 @@ var plugins []BotInterface
 var admin_plugin AdminInterface
 
 type BotInterface interface {
-	Help()
+	Help() string
 	GetName() string
 	GetSummary() string
 	CheckEnv() bool
@@ -23,6 +23,7 @@ type BotInterface interface {
 
 type AdminInterface interface {
 	GetRooms() []RoomInfo
+	IsAdmin(jid string) bool
 }
 
 // 新增模块在这里注册
@@ -104,6 +105,15 @@ func PluginPresence(pres xmpp.Presence) {
 //获取管理员模块
 func GetAdminPlugin() AdminInterface {
 	return admin_plugin
+}
+
+func GetPluginByName(name string) BotInterface {
+	for _, v := range plugins {
+		if name == v.GetName() {
+			return v
+		}
+	}
+	return nil
 }
 
 // 按名称卸载某个模块

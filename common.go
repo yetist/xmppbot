@@ -52,6 +52,14 @@ func StringToBool(val string) bool {
 	return false
 }
 
+func BoolToString(val bool) string {
+	if val {
+		return "true"
+	} else {
+		return "false"
+	}
+}
+
 // 设置状态消息
 func SetStatus(client *xmpp.Client, status, info string) {
 	client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", status, info))

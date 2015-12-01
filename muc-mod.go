@@ -17,7 +17,6 @@ func NewMuc(name string, opt map[string]interface{}) *Muc {
 		room := RoomInfo{
 			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
-			RoomLog:  i["room_log"].(bool),
 		}
 		if i["password"] != nil {
 			room.Password = i["password"].(string)
@@ -69,7 +68,6 @@ func (m *Muc) Restart() {
 		room := RoomInfo{
 			JID:      i["jid"].(string),
 			Nickname: i["nickname"].(string),
-			RoomLog:  i["room_log"].(bool),
 		}
 		if i["password"] != nil {
 			room.Password = i["password"].(string)
@@ -98,7 +96,8 @@ func (m *Muc) Chat(msg xmpp.Chat) {
 func (m *Muc) Presence(pres xmpp.Presence) {
 }
 
-func (m *Muc) Help() {
+func (m *Muc) Help() string {
+	return "help for muc"
 }
 
 func (m *Muc) GetOptions() map[string]string {
