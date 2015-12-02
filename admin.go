@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type RoomInfo struct {
+type Room struct {
 	JID           string
 	Nickname      string
 	Password      string
@@ -16,11 +16,21 @@ type RoomInfo struct {
 	StatusMessage string
 }
 
-func (r *RoomInfo) ListBlocks() string {
+func NewRoom(jid, nickname, password, status, status_message string) *Room {
+	return &Room{
+		JID:           jid,
+		Nickname:      nickname,
+		Password:      password,
+		Status:        status,
+		StatusMessage: status_message,
+	}
+}
+
+func (r *Room) ListBlocks() string {
 	return "== Block of " + r.JID + " ==\n" + strings.Join(r.Block, "\n")
 }
 
-func (r *RoomInfo) BlockOne(nick string) {
+func (r *Room) BlockOne(nick string) {
 	for _, v := range r.Block {
 		if nick == v {
 			return
@@ -29,18 +39,18 @@ func (r *RoomInfo) BlockOne(nick string) {
 	r.Block = append(r.Block, nick)
 }
 
-func (r *RoomInfo) UnBlockOne(nick string) {
+func (r *Room) UnBlockOne(nick string) {
 	r.Block = ListDelete(r.Block, nick)
 }
 
-func (r *RoomInfo) SetNick(client *xmpp.Client, nick string) {
+func (r *Room) SetNick(client *xmpp.Client, nick string) {
 	msg := fmt.Sprintf("<presence from='%s/%s' to='%s/%s'/>",
 		config.Account.Username, config.Account.Resource, r.JID, nick)
 	client.SendOrg(msg)
 	r.Nickname = nick
 }
 
-func (r *RoomInfo) SetStatus(client *xmpp.Client, status, info string) {
+func (r *Room) SetStatus(client *xmpp.Client, status, info string) {
 	msg := fmt.Sprintf("<presence from='%s/%s' to='%s/%s'>\n"+
 		"<show>%s</show>\n"+
 		"<status>%s</status>\n"+
@@ -55,21 +65,21 @@ type Admin struct {
 	Name   string
 	client *xmpp.Client
 	Option map[string]interface{}
-	Rooms  []RoomInfo
+	Rooms  []*Room
 }
 
 func NewAdmin(name string) *Admin {
-	var rooms []RoomInfo
+	var rooms []*Room
 	for _, i := range config.Setup.Rooms {
-		room := RoomInfo{
-			JID:           i["jid"].(string),
-			Nickname:      i["nickname"].(string),
-			Status:        config.Setup.Status,
-			StatusMessage: config.Setup.StatusMessage,
+		var password string
+		jid := i["jid"].(string)
+		nickname := i["nickname"].(string)
+		if i["password"] == nil {
+			password = ""
+		} else {
+			password = i["password"].(string)
 		}
-		if i["password"] != nil {
-			room.Password = i["password"].(string)
-		}
+		room := NewRoom(jid, nickname, password, config.Setup.Status, config.Setup.StatusMessage)
 		rooms = append(rooms, room)
 	}
 	return &Admin{
@@ -158,17 +168,17 @@ func (m *Admin) Restart() {
 	m.client.Roster()
 	SetStatus(m.client, config.Setup.Status, config.Setup.StatusMessage)
 
-	var rooms []RoomInfo
+	var rooms []*Room
 	for _, i := range config.Setup.Rooms {
-		room := RoomInfo{
-			JID:           i["jid"].(string),
-			Nickname:      i["nickname"].(string),
-			Status:        config.Setup.Status,
-			StatusMessage: config.Setup.StatusMessage,
+		var password string
+		jid := i["jid"].(string)
+		nickname := i["nickname"].(string)
+		if i["password"] == nil {
+			password = ""
+		} else {
+			password = i["password"].(string)
 		}
-		if i["password"] != nil {
-			room.Password = i["password"].(string)
-		}
+		room := NewRoom(jid, nickname, password, config.Setup.Status, config.Setup.StatusMessage)
 		rooms = append(rooms, room)
 	}
 	m.Rooms = rooms
@@ -225,7 +235,7 @@ func (m *Admin) Help() string {
 	return strings.Join(msg, "\n")
 }
 
-func (m *Admin) GetRooms() []RoomInfo {
+func (m *Admin) GetRooms() []*Room {
 	return m.Rooms
 }
 
@@ -701,19 +711,12 @@ func (m *Admin) admin_join_room(cmd string, msg xmpp.Chat) {
 	//"join-room <jid> <nickname> [password]"
 	tokens := strings.SplitN(cmd, " ", 4)
 	if len(tokens) == 4 {
-		room := RoomInfo{
-			JID:      tokens[1],
-			Nickname: tokens[2],
-			Password: tokens[3],
-		}
+		room := NewRoom(tokens[1], tokens[2], tokens[3], config.Setup.Status, config.Setup.StatusMessage)
 		m.client.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
 		m.Rooms = append(m.Rooms, room)
 		ReplyAuto(m.client, msg, "已经进入聊天室"+room.JID)
 	} else if len(tokens) == 3 {
-		room := RoomInfo{
-			JID:      tokens[1],
-			Nickname: tokens[2],
-		}
+		room := NewRoom(tokens[1], tokens[2], "", config.Setup.Status, config.Setup.StatusMessage)
 		m.client.JoinMUC(room.JID, room.Nickname)
 		m.Rooms = append(m.Rooms, room)
 		ReplyAuto(m.client, msg, "已经进入聊天室"+room.JID)

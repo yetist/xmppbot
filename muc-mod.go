@@ -7,20 +7,22 @@ import (
 
 type Muc struct {
 	Name   string
-	Rooms  []RoomInfo
+	Rooms  []*Room
 	client *xmpp.Client
 }
 
 func NewMuc(name string, opt map[string]interface{}) *Muc {
-	var rooms []RoomInfo
+	var rooms []*Room
 	for _, i := range opt["rooms"].([]map[string]interface{}) {
-		room := RoomInfo{
-			JID:      i["jid"].(string),
-			Nickname: i["nickname"].(string),
+		var password string
+		jid := i["jid"].(string)
+		nickname := i["nickname"].(string)
+		if i["password"] == nil {
+			password = ""
+		} else {
+			password = i["password"].(string)
 		}
-		if i["password"] != nil {
-			room.Password = i["password"].(string)
-		}
+		room := NewRoom(jid, nickname, password, config.Setup.Status, config.Setup.StatusMessage)
 		rooms = append(rooms, room)
 	}
 	return &Muc{Name: name, Rooms: rooms}
@@ -62,16 +64,18 @@ func (m *Muc) End() {
 func (m *Muc) Restart() {
 	m.End()
 
-	var rooms []RoomInfo
+	var rooms []*Room
 	v := config.Plugin[m.GetName()]
 	for _, i := range v["rooms"].([]map[string]interface{}) {
-		room := RoomInfo{
-			JID:      i["jid"].(string),
-			Nickname: i["nickname"].(string),
+		var password string
+		jid := i["jid"].(string)
+		nickname := i["nickname"].(string)
+		if i["password"] == nil {
+			password = ""
+		} else {
+			password = i["password"].(string)
 		}
-		if i["password"] != nil {
-			room.Password = i["password"].(string)
-		}
+		room := NewRoom(jid, nickname, password, config.Setup.Status, config.Setup.StatusMessage)
 		rooms = append(rooms, room)
 	}
 	m.Rooms = rooms

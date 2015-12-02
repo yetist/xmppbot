@@ -116,7 +116,7 @@ func SendPub(client *xmpp.Client, to, text string) {
 }
 
 // 群聊消息是由bot自己发出的吗？
-func IsBotSend(rooms []RoomInfo, msg xmpp.Chat) bool {
+func IsBotSend(rooms []*Room, msg xmpp.Chat) bool {
 	if msg.Type == "groupchat" {
 		for _, v := range rooms {
 			if msg.Remote == v.JID+"/"+v.Nickname {
@@ -128,7 +128,7 @@ func IsBotSend(rooms []RoomInfo, msg xmpp.Chat) bool {
 }
 
 // bot 在群里被点名了吗？
-func IsNotifyBot(rooms []RoomInfo, msg xmpp.Chat) bool {
+func IsNotifyBot(rooms []*Room, msg xmpp.Chat) bool {
 	if msg.Type == "groupchat" {
 		for _, v := range rooms {
 			if strings.Contains(msg.Text, v.Nickname) {

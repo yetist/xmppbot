@@ -22,7 +22,7 @@ type BotInterface interface {
 }
 
 type AdminInterface interface {
-	GetRooms() []RoomInfo
+	GetRooms() []*Room
 	IsAdmin(jid string) bool
 }
 
@@ -31,8 +31,8 @@ func CreatePlugin(name string, opt map[string]interface{}) BotInterface {
 	var plugin BotInterface
 	if name == "auto-reply" {
 		plugin = NewAutoReply(name, opt)
-	} else if name == "muc" {
-		plugin = NewMuc(name, opt)
+		//	} else if name == "muc" {
+		//		plugin = NewMuc(name, opt)
 	}
 	return plugin
 }
