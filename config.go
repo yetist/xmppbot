@@ -153,7 +153,7 @@ func LoadConfig(name, version, cfgname string) (err error) {
 			return
 		}
 	} else {
-		fmt.Printf("\n*** 无法找到配置文件，有效的配置文件路径(按顺序查找)***\n1. %s\n2. %s\n3. %s\n", selfconf, userconf, sysconf)
+		fmt.Printf("\n*** 无法找到配置文件，有效的配置文件路径列表为(按顺序查找)***\n\n1. %s\n2. %s\n3. %s\n", selfconf, userconf, sysconf)
 	}
 	return nil
 }
