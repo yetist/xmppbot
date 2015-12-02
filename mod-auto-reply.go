@@ -73,10 +73,11 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 {
 		return
 	}
+	admin := GetAdminPlugin()
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			if msg.Text == "--fuck" {
+			if msg.Text == admin.GetCmdString("fuck") {
 				ReplyAuto(m.client, msg, m.FuckList[rand.Intn(len(m.FuckList))])
 			} else {
 				ReplyAuto(m.client, msg, m.RandomList[rand.Intn(len(m.RandomList))])
@@ -87,14 +88,14 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 			admin := GetAdminPlugin()
 			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
-			if IsBotSend(rooms, msg) {
+			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
 				return
 			}
-			if msg.Text == "--fuck" {
+			if msg.Text == admin.GetCmdString("fuck") {
 				roomid, nick := SplitJID(msg.Remote)
 				SendPub(m.client, roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
-			if !IsNotifyBot(rooms, msg) {
+			if !RoomsMsgCallBot(rooms, msg) {
 				return
 			}
 			roomid, _ := SplitJID(msg.Remote)
@@ -107,10 +108,11 @@ func (m *AutoReply) Presence(pres xmpp.Presence) {
 }
 
 func (m *AutoReply) Help() string {
+	admin := GetAdminPlugin()
 	msg := []string{
 		"AutoReply模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
 		"支持以下命令：",
-		"--fuck 无聊透顶的命令，慎用",
+		admin.GetCmdString("fuck") + "   无聊透顶的命令，慎用",
 	}
 	return strings.Join(msg, "\n")
 }
@@ -119,9 +121,9 @@ func (m *AutoReply) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = BoolToString(v) + "  (是否在好友间启用随机回复)"
+			opts[k] = BoolToString(v) + "  #是否在好友间启用随机回复"
 		} else if k == "room" {
-			opts[k] = BoolToString(v) + "  (是否在群聊时启用随机回复)"
+			opts[k] = BoolToString(v) + "  #是否在群聊时启用随机回复"
 		}
 	}
 	return opts

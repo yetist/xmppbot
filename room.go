@@ -7,21 +7,17 @@ import (
 )
 
 type Room struct {
-	JID           string
-	Nickname      string
-	Password      string
-	Block         []string
-	Status        string
-	StatusMessage string
+	JID      string
+	Nickname string
+	Password string
+	Block    []string
 }
 
-func NewRoom(jid, nickname, password, status, status_message string) *Room {
+func NewRoom(jid, nickname, password string) *Room {
 	return &Room{
-		JID:           jid,
-		Nickname:      nickname,
-		Password:      password,
-		Status:        status,
-		StatusMessage: status_message,
+		JID:      jid,
+		Nickname: nickname,
+		Password: password,
 	}
 }
 
@@ -42,6 +38,15 @@ func (r *Room) UnBlockOne(nick string) {
 	r.Block = ListDelete(r.Block, nick)
 }
 
+func (r *Room) IsBlocked(nick string) bool {
+	for _, v := range r.Block {
+		if nick == v {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Room) SetNick(client *xmpp.Client, nick string) {
 	msg := fmt.Sprintf("<presence from='%s/%s' to='%s/%s'/>",
 		config.Account.Username, config.Account.Resource, r.JID, nick)
@@ -49,13 +54,39 @@ func (r *Room) SetNick(client *xmpp.Client, nick string) {
 	r.Nickname = nick
 }
 
-func (r *Room) SetStatus(client *xmpp.Client, status, info string) {
-	msg := fmt.Sprintf("<presence from='%s/%s' to='%s/%s'>\n"+
-		"<show>%s</show>\n"+
-		"<status>%s</status>\n"+
-		"</presence>`\n",
-		config.Account.Username, config.Account.Resource, r.JID, r.Nickname, status, info)
-	client.SendOrg(msg)
-	r.Status = status
-	r.StatusMessage = info
+// 群聊消息是由bot自己发出的吗？
+func RoomsMsgFromBot(rooms []*Room, msg xmpp.Chat) bool {
+	if msg.Type == "groupchat" {
+		for _, v := range rooms {
+			if msg.Remote == v.JID+"/"+v.Nickname {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// bot 在群里被点名了吗？
+func RoomsMsgCallBot(rooms []*Room, msg xmpp.Chat) bool {
+	if msg.Type == "groupchat" {
+		for _, v := range rooms {
+			if strings.Contains(msg.Text, v.Nickname) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// 此人在聊天中被忽略了吗?
+func RoomsMsgBlocked(rooms []*Room, msg xmpp.Chat) bool {
+	if msg.Type == "groupchat" {
+		for _, v := range rooms {
+			roomid, nick := SplitJID(msg.Remote)
+			if roomid == v.JID && v.IsBlocked(nick) {
+				return true
+			}
+		}
+	}
+	return false
 }

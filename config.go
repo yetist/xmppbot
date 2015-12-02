@@ -33,8 +33,7 @@ type Config struct {
 		Admin         []string
 		Debug         bool
 		AutoSubscribe bool   `toml:"auto_subscribe"`
-		AdminCmd      string `toml:"cmd_admin"`
-		HelpCmd       string `toml:"cmd_help"`
+		CmdPrefix     string `toml:"cmd_prefix"`
 		Status        string
 		StatusMessage string `toml:"status_message"`
 		Rooms         []map[string]interface{}

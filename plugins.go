@@ -21,18 +21,13 @@ type BotInterface interface {
 	SetOption(key, val string)
 }
 
-type AdminInterface interface {
-	GetRooms() []*Room
-	IsAdmin(jid string) bool
-}
-
 // 新增模块在这里注册
 func CreatePlugin(name string, opt map[string]interface{}) BotInterface {
 	var plugin BotInterface
 	if name == "auto-reply" {
 		plugin = NewAutoReply(name, opt)
-		//	} else if name == "muc" {
-		//		plugin = NewMuc(name, opt)
+	} else if name == "chat-logger" {
+		plugin = NewChatLogger(name, opt)
 	}
 	return plugin
 }

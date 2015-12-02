@@ -114,27 +114,3 @@ func SendAuto(client *xmpp.Client, to, text string) {
 func SendPub(client *xmpp.Client, to, text string) {
 	client.Send(xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
 }
-
-// 群聊消息是由bot自己发出的吗？
-func IsBotSend(rooms []*Room, msg xmpp.Chat) bool {
-	if msg.Type == "groupchat" {
-		for _, v := range rooms {
-			if msg.Remote == v.JID+"/"+v.Nickname {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// bot 在群里被点名了吗？
-func IsNotifyBot(rooms []*Room, msg xmpp.Chat) bool {
-	if msg.Type == "groupchat" {
-		for _, v := range rooms {
-			if strings.Contains(msg.Text, v.Nickname) {
-				return true
-			}
-		}
-	}
-	return false
-}
