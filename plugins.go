@@ -147,21 +147,3 @@ func PluginAdd(name string, client *xmpp.Client) {
 		}
 	}
 }
-
-////////////////////////////////////////
-func helpPlugins(mod string) {
-	if mod == "" {
-		for _, v := range plugins {
-			v.Help()
-		}
-		return
-	}
-	if mod == "plugins" {
-	} else {
-		for _, v := range plugins {
-			if v.GetName() == mod {
-				v.Help()
-			}
-		}
-	}
-}
