@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
-	"sort"
 	"strings"
 )
 
@@ -81,6 +80,7 @@ func (m *Admin) CheckEnv() bool {
 }
 
 func (m *Admin) Begin(client *xmpp.Client) {
+	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.client = client
 	//m.client.Roster()
 	for _, room := range m.Rooms {
@@ -161,7 +161,7 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 }
 
 func (m *Admin) Help() string {
-	msg := []string{
+	text := []string{
 		"管理员模块为内置模块，提供了管理命令，用来设置及改变Bot的行为。",
 		"支持以下命令：",
 		m.GetCmdString("help") + "    查看帮助命令详情",
@@ -169,7 +169,7 @@ func (m *Admin) Help() string {
 		m.GetCmdString("room") + "    查看聊天室命令详情",
 		m.GetCmdString("version") + " 查看Bot版本",
 	}
-	return strings.Join(msg, "\n")
+	return strings.Join(text, "\n")
 }
 
 // AdminInterface
@@ -209,13 +209,12 @@ func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
 }
 
 func (m *Admin) cmd_help_all(cmd string, msg xmpp.Chat) {
-	var helps []string
+	help_msg := []string{"==所有插件帮助信息=="}
 	for _, v := range plugins {
-		helps = append(helps, "=="+v.GetName()+"模块帮助信息==")
-		helps = append(helps, v.Help())
+		help_msg = append(help_msg, "=="+v.GetName()+"模块帮助信息==")
+		help_msg = append(help_msg, v.Help())
 	}
-	txt := "==所有插件帮助信息==\n" + strings.Join(helps, "\n")
-	ReplyAuto(m.client, msg, txt)
+	ReplyAuto(m.client, msg, strings.Join(help_msg, "\n"))
 }
 
 func (m *Admin) cmd_help_plugin(cmd string, msg xmpp.Chat) {
@@ -250,27 +249,16 @@ func (m *Admin) RoomCommand(cmd string, msg xmpp.Chat) {
 
 func (m *Admin) room_help(cmd string, msg xmpp.Chat) {
 
-	help_msg := map[string]string{
-		"help":                      "显示本信息",
-		"msg <jid|all> <msg>":       "让机器人在聊天室中发送消息msg",
-		"nick <jid|all> <NickName>": "修改机器人在聊天室的昵称为NickName",
-		"list-blocks <jid|all>":     "查看聊天室屏蔽列表",
-		"block <jid|all> <who>":     "屏蔽who，对who发送的消息不响应",
-		"unblock <jid|all> <who>":   "重新对who发送的消息进行响应",
-	}
+	help_msg := []string{"==聊天室命令==",
+		m.GetCmdString("room") + " help                      显示本信息",
+		m.GetCmdString("room") + " msg <jid|all> <msg>       让机器人在聊天室中发送消息msg",
+		m.GetCmdString("room") + " nick <jid|all> <NickName> 修改机器人在聊天室的昵称为NickName", "",
 
-	keys := make([]string, 0, len(help_msg))
-	for key := range help_msg {
-		keys = append(keys, key)
+		m.GetCmdString("room") + " list-blocks <jid|all>     查看聊天室屏蔽列表",
+		m.GetCmdString("room") + " block <jid|all> <who>     屏蔽who，对who发送的消息不响应",
+		m.GetCmdString("room") + " unblock <jid|all> <who>   重新对who发送的消息进行响应",
 	}
-	sort.Strings(keys)
-
-	var help_list []string
-	help_list = append(help_list, "==聊天室命令==")
-	for _, k := range keys {
-		help_list = append(help_list, fmt.Sprintf("%s %s : %30s", m.GetCmdString("room"), k, help_msg[k]))
-	}
-	ReplyAuto(m.client, msg, strings.Join(help_list, "\n"))
+	ReplyAuto(m.client, msg, strings.Join(help_msg, "\n"))
 }
 
 func (m *Admin) room_msg(cmd string, msg xmpp.Chat) {
@@ -383,33 +371,6 @@ func (m *Admin) room_unblock(cmd string, msg xmpp.Chat) {
 	}
 }
 
-/*
-func (m *Admin) room_status(cmd string, msg xmpp.Chat) {
-	//"status <jid|all> <status> [message]": "设置机器人在线状态",
-	tokens := strings.SplitN(cmd, " ", 4)
-	if len(tokens) != 4 || len(tokens) != 3 {
-		return
-	}
-	info := ""
-	if len(tokens) == 4 {
-		info = tokens[3]
-	}
-	if tokens[1] == "all" {
-		for _, v := range m.Rooms {
-			v.SetStatus(m.client, tokens[2], info)
-		}
-	} else {
-		for _, v := range m.Rooms {
-			if v.JID == tokens[1] {
-				v.SetStatus(m.client, tokens[2], info)
-			} else {
-				ReplyAuto(m.client, msg, "Bot未进入此聊天室")
-			}
-		}
-	}
-}
-*/
-
 func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 	if !m.IsAdmin(msg.Remote) {
 		ReplyAuto(m.client, msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
@@ -455,40 +416,30 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 }
 
 func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
+	help_msg := []string{"==管理员命令==",
+		m.GetCmdString("sudo") + " help                      显示本信息",
+		m.GetCmdString("sudo") + " restart                   重新载入配置文件，初始化各模块",
+		m.GetCmdString("sudo") + " status <status> [message] 设置机器人在线状态",
+		m.GetCmdString("sudo") + " subscribe <jid>           请求加<jid>为好友",
+		m.GetCmdString("sudo") + " unsubscribe <jid>         不再信认<jid>为好友", "",
 
-	help_msg := map[string]string{
-		"help":                       "显示本信息",
-		"restart":                    "重新载入配置文件，初始化各模块",
-		"list-all-plugins":           "列出所有的模块(管理员命令)",
-		"list-plugins":               "列出当前启用的模块(管理员命令)",
-		"disable <Plugin>":           "禁用某模块(管理员命令)",
-		"enable <Plugin>":            "启用某模块(管理员命令)",
-		"status <status> [message]":  "设置机器人在线状态",
-		"subscribe <jid>":            "请求加<jid>为好友",
-		"unsubscribe <jid>":          "不再信认<jid>为好友",
-		"list-admin":                 "列出管理员帐号",
-		"add-admin <jid>":            "新增管理员帐号",
-		"del-admin <jid>":            "新增管理员帐号",
-		"list-options":               "列出所有模块可配置选项",
-		"set-option <field> <value>": "设置模块相关选项",
+		m.GetCmdString("sudo") + " list-all-plugins  列出所有的模块(管理员命令)",
+		m.GetCmdString("sudo") + " list-plugins      列出当前启用的模块(管理员命令)",
+		m.GetCmdString("sudo") + " disable <Plugin>  禁用某模块(管理员命令)",
+		m.GetCmdString("sudo") + " enable <Plugin>   启用某模块(管理员命令)", "",
 
-		"list-rooms":                            "列出机器人当前所在的聊天室",
-		"join-room <jid> <nickname> [password]": "加入聊天室",
-		"leave-room <jid>":                      "离开聊天室",
+		m.GetCmdString("sudo") + " list-admin       列出管理员帐号",
+		m.GetCmdString("sudo") + " add-admin <jid>  新增管理员帐号",
+		m.GetCmdString("sudo") + " del-admin <jid>  新增管理员帐号", "",
+
+		m.GetCmdString("sudo") + " list-options                列出所有模块可配置选项",
+		m.GetCmdString("sudo") + " set-option <field> <value>  设置模块相关选项", "",
+
+		m.GetCmdString("sudo") + " list-rooms                             列出机器人当前所在的聊天室",
+		m.GetCmdString("sudo") + " join-room <jid> <nickname> [password]  加入聊天室",
+		m.GetCmdString("sudo") + " leave-room <jid>                       离开聊天室",
 	}
-
-	keys := make([]string, 0, len(help_msg))
-	for key := range help_msg {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	var help_list []string
-	help_list = append(help_list, "==管理员命令==")
-	for _, k := range keys {
-		help_list = append(help_list, fmt.Sprintf("%s %s : %30s", m.GetCmdString("sudo"), k, help_msg[k]))
-	}
-	ReplyAuto(m.client, msg, strings.Join(help_list, "\n"))
+	ReplyAuto(m.client, msg, strings.Join(help_msg, "\n"))
 }
 
 func (m *Admin) admin_restart(cmd string, msg xmpp.Chat) {
@@ -497,8 +448,10 @@ func (m *Admin) admin_restart(cmd string, msg xmpp.Chat) {
 }
 
 func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
-	var names []string
+	names := []string{"==所有插件列表=="}
+
 	names = append(names, m.Name+"[内置]")
+
 	for name, v := range config.Plugin {
 		if v["enable"].(bool) {
 			names = append(names, name+"[启用]")
@@ -506,17 +459,16 @@ func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
 			names = append(names, name+"[禁用]")
 		}
 	}
-	txt := "==所有插件列表==\n" + strings.Join(names, "\n")
-	ReplyAuto(m.client, msg, txt)
+	ReplyAuto(m.client, msg, strings.Join(names, "\n"))
 }
 
 func (m *Admin) admin_list_plugins(cmd string, msg xmpp.Chat) {
-	var names []string
+	names := []string{"==运行中插件列表=="}
+
 	for _, v := range plugins {
 		names = append(names, v.GetName()+" -- "+v.GetSummary())
 	}
-	txt := "==运行中插件列表==\n" + strings.Join(names, "\n")
-	ReplyAuto(m.client, msg, txt)
+	ReplyAuto(m.client, msg, strings.Join(names, "\n"))
 }
 
 func (m *Admin) admin_disable_plugin(cmd string, msg xmpp.Chat) {

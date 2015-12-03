@@ -50,6 +50,7 @@ func (m *AutoReply) CheckEnv() bool {
 }
 
 func (m *AutoReply) Begin(client *xmpp.Client) {
+	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.client = client
 	rand.Seed(time.Now().Unix())
 
