@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	"golang.org/x/net/html"
+	"io/ioutil"
+	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -54,6 +58,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
+			m.DoHttpHelper(msg)
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
@@ -63,7 +68,29 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
 				return
 			}
+			m.DoHttpHelper(msg)
+		}
+	}
+}
 
+func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
+	if strings.Contains(msg.Text, "http://") || strings.Contains(msg.Text, "https://") {
+		for k, url := range get_urls(msg.Text) {
+			if url != "" {
+				status, size, mime := get_url_info(url)
+				if status != http.StatusOK {
+					println(k, url, "访问出错了")
+					return
+				}
+				if strings.HasPrefix(mime, "text/html") {
+					println(k, url, "发了一个网页", size)
+					//get_html_title(str string) (title string) {
+				} else if strings.HasPrefix(mime, "image/") {
+					println(k, url, "发了一个图片")
+				} else {
+					println(k, url, "发了其它类型文件")
+				}
+			}
 		}
 	}
 }
@@ -132,4 +159,85 @@ func get_html_title(str string) (title string) {
 		}
 	}
 	return
+}
+
+func get_url_info(url string) (status int, size int64, mime string) {
+	response, err := http.Head(url)
+	if err != nil {
+		return
+	}
+
+	if status = response.StatusCode; status != http.StatusOK {
+		return
+	}
+	length, _ := strconv.Atoi(response.Header.Get("Content-Length"))
+	size = int64(length)
+	mime = response.Header.Get("Content-Type")
+	return
+}
+
+func get_urls(source string) []string {
+	pattern := `https?://[\w\-./%?=&]+[\w\-./%?=&]*`
+	reg := regexp.MustCompile(pattern)
+	return reg.FindAllString(source, -1)
+}
+
+func get_url_contents(url string) (cont []byte, err error) {
+	var resp *http.Response
+	resp, err = http.Get(url)
+	if err != nil {
+		return []byte{}, err
+	}
+	cont, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return []byte{}, err
+	}
+	return
+}
+
+// reqType is one of HTTP request strings (GET, POST, PUT, DELETE, etc.)
+func DoRequest(reqType string, url string, headers map[string]string, data []byte, timeoutSeconds int) (int, []byte, map[string][]string, error) {
+	var reader io.Reader
+	if data != nil && len(data) > 0 {
+		reader = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequest(reqType, url, reader)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+
+	// I strongly advise setting user agent as some servers ignore request without it
+	req.Header.Set("User-Agent", "YourUserAgentString")
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
+
+	var (
+		statusCode int
+		body       []byte
+		timeout    time.Duration
+		ctx        context.Context
+		cancel     context.CancelFunc
+		header     map[string][]string
+	)
+	timeout = time.Duration(time.Duration(timeoutSeconds) * time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	err = httpDo(ctx, req, func(resp *http.Response, err error) error {
+		if err != nil {
+			return err
+		}
+
+		defer resp.Body.Close()
+		body, _ = ioutil.ReadAll(resp.Body)
+		statusCode = resp.StatusCode
+		header = resp.Header
+
+		return nil
+	})
+	return statusCode, body, header, err
 }

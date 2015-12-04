@@ -26,6 +26,8 @@ func CreatePlugin(name string, opt map[string]interface{}) BotInterface {
 	var plugin BotInterface
 	if name == "auto-reply" {
 		plugin = NewAutoReply(name, opt)
+	} else if name == "url-helper" {
+		plugin = NewUrlHelper(name, opt)
 	} else if name == "logger" {
 		plugin = NewLogger(name, opt)
 	}
