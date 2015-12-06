@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"code.google.com/p/graphics-go/graphics"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/mattn/go-xmpp"
@@ -8,6 +11,9 @@ import (
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
+	"image"
+	_ "image/jpeg" //必须import，否则会出现：unknown format，其余类似
+	"image/png"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -226,4 +232,26 @@ func getUTF8HtmlTitle(str string) string {
 		return getHtmlTitle(string(b))
 	}
 	return ""
+}
+
+func getBase64Image(body []byte, width, height int) string {
+	src, _, err := image.Decode(strings.NewReader(string(body))) //解码图片
+	if err != nil {
+		return ""
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+	err = graphics.Scale(dst, src) //缩小图片
+	if err != nil {
+		return ""
+	}
+	buf := bytes.NewBuffer([]byte{})
+	err = png.Encode(buf, dst) //编码图片
+	if err != nil {
+		return ""
+	}
+	e64 := base64.StdEncoding
+	maxEncLen := e64.EncodedLen(buf.Len())
+	encBuf := make([]byte, maxEncLen)
+	e64.Encode(encBuf, buf.Bytes())
+	return fmt.Sprintf("data:image/png;base64,%s", string(encBuf))
 }

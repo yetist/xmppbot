@@ -104,6 +104,8 @@ func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
 				if strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
 					m.SendHtml(msg, fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, getUTF8HtmlTitle(string(body))))
 				} else if strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
+					img := getBase64Image(body, 100, 100)
+					m.SendHtml(msg, fmt.Sprintf("发图片了:<a href='%s'><img alt='点击看大图' src='%s'/></a>", url, img))
 					println(k, url, "发了一个图片")
 				} else {
 					println(k, url, "发了其它类型文件")
