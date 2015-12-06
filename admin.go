@@ -4,19 +4,22 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	"strings"
+	"time"
 )
 
 type Admin struct {
-	Name   string
-	client *xmpp.Client
-	Option map[string]interface{}
-	Rooms  []*Room
+	Name      string
+	client    *xmpp.Client
+	Option    map[string]interface{}
+	loginTime time.Time
+	Rooms     []*Room
 }
 
 type AdminInterface interface {
 	GetRooms() []*Room
 	IsAdmin(jid string) bool
 	GetCmdString(cmd string) string
+	LoginTime() time.Time
 }
 
 func NewAdmin(name string) *Admin {
@@ -82,6 +85,7 @@ func (m *Admin) CheckEnv() bool {
 func (m *Admin) Begin(client *xmpp.Client) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.client = client
+	m.loginTime = time.Now()
 	//m.client.Roster()
 	for _, room := range m.Rooms {
 		if len(room.Password) > 0 {
@@ -185,6 +189,10 @@ func (m *Admin) IsAdmin(jid string) bool {
 		}
 	}
 	return false
+}
+
+func (m *Admin) LoginTime() time.Time {
+	return m.loginTime.UTC()
 }
 
 func (m *Admin) GetCmdString(cmd string) string {

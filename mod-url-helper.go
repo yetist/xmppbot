@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	"golang.org/x/net/html"
-	"io/ioutil"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
+var mutex sync.Mutex
+
 type UrlHelper struct {
-	Name   string
-	client *xmpp.Client
-	Option map[string]bool
+	Name    string
+	client  *xmpp.Client
+	timeout time.Duration
+	Option  map[string]bool
 }
 
 func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
@@ -24,6 +27,7 @@ func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
 			"chat": opt["chat"].(bool),
 			"room": opt["room"].(bool),
 		},
+		timeout: 5,
 	}
 }
 
@@ -52,12 +56,18 @@ func (m *UrlHelper) Restart() {
 }
 
 func (m *UrlHelper) Chat(msg xmpp.Chat) {
-	if len(msg.Text) == 0 {
+	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
+		println("aaa")
 		return
 	}
 
+	println("bbb")
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
+			if ChatMsgFromBot(msg) {
+				fmt.Printf("*** 忽略由bot发送的消息," + msg.Text + "\n")
+				return
+			}
 			m.DoHttpHelper(msg)
 		}
 	} else if msg.Type == "groupchat" {
@@ -66,6 +76,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
 			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
+				fmt.Printf("*** 忽略由bot发送的消息," + msg.Text + "\n")
 				return
 			}
 			m.DoHttpHelper(msg)
@@ -73,19 +84,35 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 	}
 }
 
+func (m *UrlHelper) SendHtml(msg xmpp.Chat, info string) {
+	if msg.Type == "groupchat" {
+		fmt.Printf("===> %#v, %s\n", msg.Text, msg.Stamp)
+		roomid, nick := SplitJID(msg.Remote)
+		text := fmt.Sprintf("<p>%s %s</p>", nick, info)
+		//SendHtml(m.client, xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
+		m.client.SendHtml(xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
+	} else {
+		text := fmt.Sprintf("<p>%s</p>", info)
+		//SendHtml(m.client, xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
+		m.client.SendHtml(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
+	}
+
+}
+
 func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	if strings.Contains(msg.Text, "http://") || strings.Contains(msg.Text, "https://") {
-		for k, url := range get_urls(msg.Text) {
+		for k, url := range GetUrls(msg.Text) {
 			if url != "" {
-				status, size, mime := get_url_info(url)
-				if status != http.StatusOK {
-					println(k, url, "访问出错了")
+				res, body, err := HttpOpen(url, m.timeout)
+				if err != nil || res.StatusCode != http.StatusOK {
+					m.SendHtml(msg, fmt.Sprintf("对不起，无法打开此<a href='%s'>链接</a>", url))
 					return
 				}
-				if strings.HasPrefix(mime, "text/html") {
-					println(k, url, "发了一个网页", size)
-					//get_html_title(str string) (title string) {
-				} else if strings.HasPrefix(mime, "image/") {
+				if strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
+					m.SendHtml(msg, fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, getUTF8HtmlTitle(string(body))))
+				} else if strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
 					println(k, url, "发了一个图片")
 				} else {
 					println(k, url, "发了其它类型文件")
@@ -133,111 +160,8 @@ func get_title_content(n *html.Node) (title string) {
 	return
 }
 
-func get_html_title(str string) (title string) {
-	doc, err := html.Parse(strings.NewReader(str))
-	if err != nil {
-		return
-	}
-	for a := doc.FirstChild; a != nil; a = a.NextSibling {
-		if title = get_title_content(a); title != "" {
-			return
-		}
-		for b := a.FirstChild; b != nil; b = b.NextSibling {
-			if title = get_title_content(b); title != "" {
-				return
-			}
-			for c := b.FirstChild; c != nil; c = c.NextSibling {
-				if title = get_title_content(c); title != "" {
-					return
-				}
-				for d := c.FirstChild; d != nil; d = d.NextSibling {
-					if title = get_title_content(d); title != "" {
-						return
-					}
-				}
-			}
-		}
-	}
-	return
-}
-
-func get_url_info(url string) (status int, size int64, mime string) {
-	response, err := http.Head(url)
-	if err != nil {
-		return
-	}
-
-	if status = response.StatusCode; status != http.StatusOK {
-		return
-	}
-	length, _ := strconv.Atoi(response.Header.Get("Content-Length"))
-	size = int64(length)
-	mime = response.Header.Get("Content-Type")
-	return
-}
-
-func get_urls(source string) []string {
+func GetUrls(source string) []string {
 	pattern := `https?://[\w\-./%?=&]+[\w\-./%?=&]*`
 	reg := regexp.MustCompile(pattern)
 	return reg.FindAllString(source, -1)
-}
-
-func get_url_contents(url string) (cont []byte, err error) {
-	var resp *http.Response
-	resp, err = http.Get(url)
-	if err != nil {
-		return []byte{}, err
-	}
-	cont, err = ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return []byte{}, err
-	}
-	return
-}
-
-// reqType is one of HTTP request strings (GET, POST, PUT, DELETE, etc.)
-func DoRequest(reqType string, url string, headers map[string]string, data []byte, timeoutSeconds int) (int, []byte, map[string][]string, error) {
-	var reader io.Reader
-	if data != nil && len(data) > 0 {
-		reader = bytes.NewReader(data)
-	}
-
-	req, err := http.NewRequest(reqType, url, reader)
-	if err != nil {
-		return 0, nil, nil, err
-	}
-
-	// I strongly advise setting user agent as some servers ignore request without it
-	req.Header.Set("User-Agent", "YourUserAgentString")
-	if headers != nil {
-		for k, v := range headers {
-			req.Header.Set(k, v)
-		}
-	}
-
-	var (
-		statusCode int
-		body       []byte
-		timeout    time.Duration
-		ctx        context.Context
-		cancel     context.CancelFunc
-		header     map[string][]string
-	)
-	timeout = time.Duration(time.Duration(timeoutSeconds) * time.Second)
-	ctx, cancel = context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	err = httpDo(ctx, req, func(resp *http.Response, err error) error {
-		if err != nil {
-			return err
-		}
-
-		defer resp.Body.Close()
-		body, _ = ioutil.ReadAll(resp.Body)
-		statusCode = resp.StatusCode
-		header = resp.Header
-
-		return nil
-	})
-	return statusCode, body, header, err
 }
