@@ -13,7 +13,7 @@ debug = false
 auto_subscribe = true
 cmd_prefix = "--"
 status = "chat" # away, chat, dnd, xa.
-status_message = "hi, I am online."
+status_message = "我在线上"
 
 [[setup.rooms]]
 jid = "linuxcn@conference.jabber.org"
@@ -35,6 +35,13 @@ random = "random.txt"
 enable = true
 chat = true
 room = true
+logger = "xmpplog.sqlite"
+
+[plugin.url-helper]
+enable = true
+chat = true
+room = true
+timeout = 2
 
 [plugin.ip]
 enable = true
