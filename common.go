@@ -221,7 +221,6 @@ func getUTF8HtmlTitle(str string) string {
 	}
 	r := transform.NewReader(strings.NewReader(str), e.NewDecoder())
 	if b, err := ioutil.ReadAll(r); err != nil {
-		println(err)
 		return ""
 	} else {
 		return getHtmlTitle(string(b))

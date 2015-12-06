@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
-	"golang.org/x/net/html"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -56,15 +55,13 @@ func (m *UrlHelper) Restart() {
 
 func (m *UrlHelper) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
-		println("aaa")
 		return
 	}
 
-	println("bbb")
 	if msg.Type == "chat" {
 		if m.Option["chat"].(bool) {
 			if ChatMsgFromBot(msg) {
-				fmt.Printf("*** 忽略由bot发送的消息," + msg.Text + "\n")
+				fmt.Printf("[%s] *** 忽略由bot发送的消息: %s\n", m.GetName(), msg.Text)
 				return
 			}
 			m.DoHttpHelper(msg)
@@ -75,7 +72,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
 			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
-				fmt.Printf("*** 忽略由bot发送的消息," + msg.Text + "\n")
+				fmt.Printf("[%s] *** 忽略由bot发送的消息: %s\n", m.GetName(), msg.Text)
 				return
 			}
 			m.DoHttpHelper(msg)
@@ -85,17 +82,13 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 
 func (m *UrlHelper) SendHtml(msg xmpp.Chat, info string) {
 	if msg.Type == "groupchat" {
-		fmt.Printf("===> %#v, %s\n", msg.Text, msg.Stamp)
 		roomid, nick := SplitJID(msg.Remote)
 		text := fmt.Sprintf("<p>%s %s</p>", nick, info)
-		//SendHtml(m.client, xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
 		m.client.SendHtml(xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
 	} else {
 		text := fmt.Sprintf("<p>%s</p>", info)
-		//SendHtml(m.client, xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
 		m.client.SendHtml(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
 	}
-
 }
 
 func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
@@ -125,7 +118,7 @@ func (m *UrlHelper) Presence(pres xmpp.Presence) {
 
 func (m *UrlHelper) Help() string {
 	msg := []string{
-		"UrlHelper模块为自动响应模块，当聊天内容中包含url时将自动激活．",
+		"UrlHelper模块自动为聊天消息提供url标题或显示图片缩略图。",
 	}
 	return strings.Join(msg, "\n")
 }
@@ -155,16 +148,6 @@ func (m *UrlHelper) SetOption(key, val string) {
 			}
 		}
 	}
-}
-
-func get_title_content(n *html.Node) (title string) {
-	if n.Type == html.ElementNode && n.Data == "title" {
-		t := n.FirstChild
-		if t.Type == html.TextNode {
-			title = t.Data
-		}
-	}
-	return
 }
 
 func GetUrls(source string) []string {

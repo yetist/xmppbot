@@ -71,7 +71,7 @@ func (m *AutoReply) Restart() {
 }
 
 func (m *AutoReply) Chat(msg xmpp.Chat) {
-	if len(msg.Text) == 0 {
+	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
 	admin := GetAdminPlugin()

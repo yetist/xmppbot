@@ -126,10 +126,7 @@ func (m *Admin) Restart() {
 }
 
 func (m *Admin) Chat(msg xmpp.Chat) {
-	if msg.Type == "roster" {
-		fmt.Printf("%#v\n", msg.Roster)
-	}
-	if len(msg.Text) == 0 {
+	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
 
