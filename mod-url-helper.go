@@ -6,26 +6,25 @@ import (
 	"golang.org/x/net/html"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
-
-var mutex sync.Mutex
 
 type UrlHelper struct {
 	Name    string
 	client  *xmpp.Client
 	timeout time.Duration
-	Option  map[string]bool
+	Option  map[string]interface{}
 }
 
 func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
 	return &UrlHelper{
 		Name: name,
-		Option: map[string]bool{
-			"chat": opt["chat"].(bool),
-			"room": opt["room"].(bool),
+		Option: map[string]interface{}{
+			"chat":    opt["chat"].(bool),
+			"room":    opt["room"].(bool),
+			"timeout": opt["timeout"].(int64),
 		},
 		timeout: 5,
 	}
@@ -63,7 +62,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 
 	println("bbb")
 	if msg.Type == "chat" {
-		if m.Option["chat"] {
+		if m.Option["chat"].(bool) {
 			if ChatMsgFromBot(msg) {
 				fmt.Printf("*** 忽略由bot发送的消息," + msg.Text + "\n")
 				return
@@ -71,7 +70,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			m.DoHttpHelper(msg)
 		}
 	} else if msg.Type == "groupchat" {
-		if m.Option["room"] {
+		if m.Option["room"].(bool) {
 			admin := GetAdminPlugin()
 			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
@@ -100,12 +99,11 @@ func (m *UrlHelper) SendHtml(msg xmpp.Chat, info string) {
 }
 
 func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
-	mutex.Lock()
-	defer mutex.Unlock()
 	if strings.Contains(msg.Text, "http://") || strings.Contains(msg.Text, "https://") {
 		for k, url := range GetUrls(msg.Text) {
 			if url != "" {
-				res, body, err := HttpOpen(url, m.timeout)
+				timeout := time.Duration(m.Option["timeout"].(int64))
+				res, body, err := HttpOpen(url, timeout)
 				if err != nil || res.StatusCode != http.StatusOK {
 					m.SendHtml(msg, fmt.Sprintf("对不起，无法打开此<a href='%s'>链接</a>", url))
 					return
@@ -136,17 +134,26 @@ func (m *UrlHelper) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = BoolToString(v) + "  #是否记录朋友发送的日志"
+			opts[k] = BoolToString(v.(bool)) + "  #是否记录朋友发送的日志"
 		} else if k == "room" {
-			opts[k] = BoolToString(v) + "  #是否记录群聊日志"
+			opts[k] = BoolToString(v.(bool)) + "  #是否记录群聊日志"
+		} else if k == "timeout" {
+			opts[k] = strconv.FormatInt(v.(int64), 10) + "  #访问链接超时时间"
 		}
 	}
 	return opts
+
 }
 
 func (m *UrlHelper) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
-		m.Option[key] = StringToBool(val)
+		if key == "chat" || key == "room" {
+			m.Option[key] = StringToBool(val)
+		} else if key == "timeout" {
+			if i, e := strconv.ParseInt(val, 10, 0); e == nil {
+				m.Option[key] = i
+			}
+		}
 	}
 }
 

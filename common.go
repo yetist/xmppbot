@@ -211,20 +211,6 @@ func getHtmlTitle(str string) (title string) {
 	return
 }
 
-func StringToUTF8(str, encoding string) string {
-	e, _ := charset.Lookup(encoding)
-	if e == nil {
-		return ""
-	}
-	r := transform.NewReader(strings.NewReader(str), e.NewDecoder())
-	if b, err := ioutil.ReadAll(r); err != nil {
-		return ""
-	} else {
-		return string(b)
-	}
-	return ""
-}
-
 func getUTF8HtmlTitle(str string) string {
 	var e encoding.Encoding
 	var name string
