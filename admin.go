@@ -564,7 +564,7 @@ func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
 
 	var opt_list []string
 	for _, v := range keys {
-		opt_list = append(opt_list, fmt.Sprintf("%s : %15s", v, options[v]))
+		opt_list = append(opt_list, fmt.Sprintf("%-20s : %s", v, options[v]))
 	}
 	txt := "==所有模块可配置选项==\n" + strings.Join(opt_list, "\n")
 	ReplyAuto(m.client, msg, txt)

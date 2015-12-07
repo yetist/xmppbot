@@ -80,10 +80,11 @@ func SetStatus(client *xmpp.Client, status, info string) {
 }
 
 func SendHtml(client *xmpp.Client, chat xmpp.Chat) {
-	client.SendOrg(fmt.Sprintf("<message to='%s' type='%s' xml:lang='en'>"+
-		"<body>%s</body>"+
+	text := strings.Replace(chat.Text, "&", "&amp;", -1)
+	org := fmt.Sprintf("<message to='%s' type='%s' xml:lang='en'><body>%s</body>"+
 		"<html xmlns='http://jabber.org/protocol/xhtml-im'><body xmlns='http://www.w3.org/1999/xhtml'>%s</body></html></message>",
-		html.EscapeString(chat.Remote), html.EscapeString(chat.Type), html.EscapeString("hello"), chat.Text))
+		html.EscapeString(chat.Remote), html.EscapeString(chat.Type), html.EscapeString(chat.Text), text)
+	client.SendOrg(org)
 }
 
 func MapDelete(dict map[string]interface{}, key string) {

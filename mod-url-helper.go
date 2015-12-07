@@ -11,10 +11,9 @@ import (
 )
 
 type UrlHelper struct {
-	Name    string
-	client  *xmpp.Client
-	timeout time.Duration
-	Option  map[string]interface{}
+	Name   string
+	client *xmpp.Client
+	Option map[string]interface{}
 }
 
 func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
@@ -24,8 +23,9 @@ func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
 			"chat":    opt["chat"].(bool),
 			"room":    opt["room"].(bool),
 			"timeout": opt["timeout"].(int64),
+			"width":   100,
+			"height":  100,
 		},
-		timeout: 5,
 	}
 }
 
@@ -51,6 +51,12 @@ func (m *UrlHelper) End() {
 }
 
 func (m *UrlHelper) Restart() {
+	opt := config.Plugin[m.GetName()]
+	m.Option["chat"] = opt["chat"].(bool)
+	m.Option["room"] = opt["room"].(bool)
+	m.Option["timeout"] = opt["timeout"].(int64)
+	m.Option["width"] = 100
+	m.Option["height"] = 100
 }
 
 func (m *UrlHelper) Chat(msg xmpp.Chat) {
@@ -84,10 +90,10 @@ func (m *UrlHelper) SendHtml(msg xmpp.Chat, info string) {
 	if msg.Type == "groupchat" {
 		roomid, nick := SplitJID(msg.Remote)
 		text := fmt.Sprintf("<p>%s %s</p>", nick, info)
-		m.client.SendHtml(xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
+		SendHtml(m.client, xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
 	} else {
 		text := fmt.Sprintf("<p>%s</p>", info)
-		m.client.SendHtml(xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
+		SendHtml(m.client, xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
 	}
 }
 
@@ -102,11 +108,16 @@ func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
 					return
 				}
 				if strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
-					m.SendHtml(msg, fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, getUTF8HtmlTitle(string(body))))
+					title := getUTF8HtmlTitle(string(body))
+					if title == "" {
+						m.SendHtml(msg, fmt.Sprintf("报歉，无法得到<a href='%s'>链接</a>标题", url))
+
+					} else {
+						m.SendHtml(msg, fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, title))
+					}
 				} else if strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
-					img := getBase64Image(body, 100, 100)
-					m.SendHtml(msg, fmt.Sprintf("发图片了:<a href='%s'><img alt='点击看大图' src='%s'/></a>", url, img))
-					println(k, url, "发了一个图片")
+					img := getBase64Image(body, m.Option["width"].(int), m.Option["height"].(int))
+					m.SendHtml(msg, fmt.Sprintf("发<a href='%s'>图片</a>了:<br/><img alt='点击看大图' src='%s'/>", url, img))
 				} else {
 					println(k, url, "发了其它类型文件")
 				}
@@ -134,6 +145,10 @@ func (m *UrlHelper) GetOptions() map[string]string {
 			opts[k] = BoolToString(v.(bool)) + "  #是否记录群聊日志"
 		} else if k == "timeout" {
 			opts[k] = strconv.FormatInt(v.(int64), 10) + "  #访问链接超时时间"
+		} else if k == "width" {
+			opts[k] = strconv.Itoa(v.(int)) + "  #预览图片宽度"
+		} else if k == "height" {
+			opts[k] = strconv.Itoa(v.(int)) + "  #预览图片高度"
 		}
 	}
 	return opts
@@ -146,6 +161,14 @@ func (m *UrlHelper) SetOption(key, val string) {
 			m.Option[key] = StringToBool(val)
 		} else if key == "timeout" {
 			if i, e := strconv.ParseInt(val, 10, 0); e == nil {
+				m.Option[key] = i
+			}
+		} else if key == "width" {
+			if i, e := strconv.Atoi(val); e == nil {
+				m.Option[key] = i
+			}
+		} else if key == "height" {
+			if i, e := strconv.Atoi(val); e == nil {
 				m.Option[key] = i
 			}
 		}
