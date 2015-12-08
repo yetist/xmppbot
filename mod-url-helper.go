@@ -67,10 +67,12 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 	if msg.Type == "chat" {
 		if m.Option["chat"].(bool) {
 			if ChatMsgFromBot(msg) {
-				fmt.Printf("[%s] *** 忽略由bot发送的消息: %s\n", m.GetName(), msg.Text)
 				return
 			}
-			m.DoHttpHelper(msg)
+			text := m.GetHelper(msg.Text)
+			if text != "" {
+				ReplyAuto(m.client, msg, fmt.Sprintf("<p>%s</p>", text))
+			}
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"].(bool) {
@@ -78,52 +80,43 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
 			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
-				fmt.Printf("[%s] *** 忽略由bot发送的消息: %s\n", m.GetName(), msg.Text)
 				return
 			}
-			m.DoHttpHelper(msg)
+			text := m.GetHelper(msg.Text)
+			if text != "" {
+				roomid, nick := SplitJID(msg.Remote)
+				SendPub(m.client, roomid, fmt.Sprintf("<p>%s %s</p>", nick, text))
+			}
 		}
 	}
 }
 
-func (m *UrlHelper) SendHtml(msg xmpp.Chat, info string) {
-	if msg.Type == "groupchat" {
-		roomid, nick := SplitJID(msg.Remote)
-		text := fmt.Sprintf("<p>%s %s</p>", nick, info)
-		SendHtml(m.client, xmpp.Chat{Remote: roomid, Type: "groupchat", Text: text})
-	} else {
-		text := fmt.Sprintf("<p>%s</p>", info)
-		SendHtml(m.client, xmpp.Chat{Remote: msg.Remote, Type: "chat", Text: text})
-	}
-}
-
-func (m *UrlHelper) DoHttpHelper(msg xmpp.Chat) {
-	if strings.Contains(msg.Text, "http://") || strings.Contains(msg.Text, "https://") {
-		for k, url := range GetUrls(msg.Text) {
+func (m *UrlHelper) GetHelper(text string) string {
+	if strings.Contains(text, "http://") || strings.Contains(text, "https://") {
+		for k, url := range GetUrls(text) {
 			if url != "" {
 				timeout := time.Duration(m.Option["timeout"].(int64))
 				res, body, err := HttpOpen(url, timeout)
 				if err != nil || res.StatusCode != http.StatusOK {
-					m.SendHtml(msg, fmt.Sprintf("对不起，无法打开此<a href='%s'>链接</a>", url))
-					return
+					return fmt.Sprintf("对不起，无法打开此<a href='%s'>链接</a>", url)
 				}
 				if strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
 					title := getUTF8HtmlTitle(string(body))
 					if title == "" {
-						m.SendHtml(msg, fmt.Sprintf("报歉，无法得到<a href='%s'>链接</a>标题", url))
-
+						return fmt.Sprintf("报歉，无法得到<a href='%s'>链接</a>标题", url)
 					} else {
-						m.SendHtml(msg, fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, title))
+						return fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, title)
 					}
 				} else if strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
 					img := getBase64Image(body, m.Option["width"].(int), m.Option["height"].(int))
-					m.SendHtml(msg, fmt.Sprintf("发<a href='%s'>图片</a>了:<br/><img alt='点击看大图' src='%s'/>", url, img))
+					return fmt.Sprintf("发<a href='%s'>图片</a>了:<br/><img alt='点击看大图' src='%s'/>", url, img)
 				} else {
 					println(k, url, "发了其它类型文件")
 				}
 			}
 		}
 	}
+	return ""
 }
 
 func (m *UrlHelper) Presence(pres xmpp.Presence) {
