@@ -6,7 +6,6 @@ import (
 	"github.com/mattn/go-xmpp"
 	"io/ioutil"
 	"net/http"
-	"reflect"
 	"strings"
 )
 
@@ -84,7 +83,7 @@ func (m *Tuling) Presence(pres xmpp.Presence) {
 
 func (m *Tuling) Help() string {
 	msg := []string{
-		"Tuling模块为图灵机器人模块，在和Bot聊天及群聊时提到Bot时自动响应．",
+		"图灵机器人模块，在和Bot聊天及群聊时提到Bot时自动响应．",
 	}
 	return strings.Join(msg, "\n")
 }
@@ -93,9 +92,9 @@ func (m *Tuling) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = BoolToString(v) + "  #是否在好友间启用随机回复"
+			opts[k] = BoolToString(v) + "  #是否响应好友消息"
 		} else if k == "room" {
-			opts[k] = BoolToString(v) + "  #是否在群聊时启用随机回复"
+			opts[k] = BoolToString(v) + "  #是否响应群聊呼叫消息"
 		}
 	}
 	return opts
@@ -107,7 +106,7 @@ func (m *Tuling) SetOption(key, val string) {
 	}
 }
 
-func (m *Tuling) Request(words string) (string, error) {
+func (m *Tuling) Request(words string) (text string, err error) {
 
 	resp, err := http.Get(fmt.Sprintf("%s?key=%s&loc=%s&info=%s", m.URL, m.Key, "北京上地", words))
 	if err != nil {
@@ -117,21 +116,35 @@ func (m *Tuling) Request(words string) (string, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 
-	json, err := simplejson.NewJson(body)
-	fmt.Printf("%#v\n", string(body))
+	var json *simplejson.Json
+	json, err = simplejson.NewJson(body)
 	if err != nil {
 		return "", err
 	}
 
-	result, err := json.Map()
-	fmt.Printf("%#v\n", result)
-	if err != nil {
-		return "", err
+	code := json.Get("code").MustInt()
+	if code == 100000 {
+		text = json.Get("text").MustString()
+	} else if code == 200000 {
+		text = fmt.Sprintf("<p>%s, 点击查看<a href='%s'>详情</a><br/></p>", json.Get("text").MustString(), json.Get("url").MustString())
+	} else if code == 302000 {
+		var l []string
+		list := json.Get("list").MustArray()
+		for _, v := range list {
+			item := v.(map[string]interface{})
+			l = append(l, fmt.Sprintf("%s:<a href='%s'>%s</a><br/>", item["source"].(string), item["detailurl"].(string), item["article"].(string)))
+		}
+		text = fmt.Sprintf("<p>%s<br/>%s<br/></p>", json.Get("text").MustString(), strings.Join(l, "\n"))
+	} else if code == 308000 {
+		fmt.Printf("get menu info:%s\n", json.Get("text").MustString())
+		var l []string
+		list := json.Get("list").MustArray()
+		for _, v := range list {
+			item := v.(map[string]interface{})
+			l = append(l, fmt.Sprintf("<a href='%s'>%s</a>，食材:%s<br/>", item["detailurl"].(string), item["name"].(string), item["info"].(string)))
+		}
+		text = fmt.Sprintf("<p>%s<br/>%s<br/></p>", json.Get("text").MustString(), strings.Join(l, "\n"))
 	}
-
-	textValue := result["text"]
-	text := reflect.ValueOf(textValue).Interface().(string)
-
 	return text, nil
 }
 

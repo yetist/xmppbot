@@ -79,14 +79,6 @@ func SetStatus(client *xmpp.Client, status, info string) {
 	client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", status, info))
 }
 
-func SendHtml(client *xmpp.Client, chat xmpp.Chat) {
-	text := strings.Replace(chat.Text, "&", "&amp;", -1)
-	org := fmt.Sprintf("<message to='%s' type='%s' xml:lang='en'><body>%s</body>"+
-		"<html xmlns='http://jabber.org/protocol/xhtml-im'><body xmlns='http://www.w3.org/1999/xhtml'>%s</body></html></message>",
-		html.EscapeString(chat.Remote), html.EscapeString(chat.Type), html.EscapeString(chat.Text), text)
-	client.SendOrg(org)
-}
-
 func MapDelete(dict map[string]interface{}, key string) {
 	_, ok := dict[key]
 	if ok {
@@ -112,16 +104,32 @@ func ListDelete(list []string, key string) []string {
 	return list
 }
 
+func SendHtml(client *xmpp.Client, chat xmpp.Chat) {
+	text := strings.Replace(chat.Text, "&", "&amp;", -1)
+	org := fmt.Sprintf("<message to='%s' type='%s' xml:lang='en'><body>%s</body>"+
+		"<html xmlns='http://jabber.org/protocol/xhtml-im'><body xmlns='http://www.w3.org/1999/xhtml'>%s</body></html></message>",
+		html.EscapeString(chat.Remote), html.EscapeString(chat.Type), html.EscapeString(chat.Text), text)
+	client.SendOrg(org)
+}
+
 // 回复好友消息，或聊天室私聊消息
 func ReplyAuto(client *xmpp.Client, recv xmpp.Chat, text string) {
-	client.Send(xmpp.Chat{Remote: recv.Remote, Type: "chat", Text: text})
+	if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
+		SendHtml(client, xmpp.Chat{Remote: recv.Remote, Type: "chat", Text: text})
+	} else {
+		client.Send(xmpp.Chat{Remote: recv.Remote, Type: "chat", Text: text})
+	}
 }
 
 // 回复好友消息，或聊天室公共消息
 func ReplyPub(client *xmpp.Client, recv xmpp.Chat, text string) {
 	if recv.Type == "groupchat" {
 		roomid, _ := SplitJID(recv.Remote)
-		client.Send(xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
+		if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
+			SendHtml(client, xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
+		} else {
+			client.Send(xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
+		}
 	} else {
 		ReplyAuto(client, recv, text)
 	}
@@ -129,12 +137,20 @@ func ReplyPub(client *xmpp.Client, recv xmpp.Chat, text string) {
 
 // 发送到好友消息，或聊天室私聊消息
 func SendAuto(client *xmpp.Client, to, text string) {
-	client.Send(xmpp.Chat{Remote: to, Type: "chat", Text: text})
+	if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
+		SendHtml(client, xmpp.Chat{Remote: to, Type: "chat", Text: text})
+	} else {
+		client.Send(xmpp.Chat{Remote: to, Type: "chat", Text: text})
+	}
 }
 
 // 发送聊天室公共消息
 func SendPub(client *xmpp.Client, to, text string) {
-	client.Send(xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
+	if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
+		SendHtml(client, xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
+	} else {
+		client.Send(xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
+	}
 }
 
 func ChatMsgFromBot(msg xmpp.Chat) bool {
