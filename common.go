@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"code.google.com/p/graphics-go/graphics"
+	"crypto/md5"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"image"
 	_ "image/jpeg" //必须import，否则会出现：unknown format，其余类似
 	"image/png"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -271,4 +273,10 @@ func getBase64Image(body []byte, width, height int) string {
 	encBuf := make([]byte, maxEncLen)
 	e64.Encode(encBuf, buf.Bytes())
 	return fmt.Sprintf("data:image/png;base64,%s", string(encBuf))
+}
+
+func GetMd5(str string) string {
+	h := md5.New()
+	io.WriteString(h, str)
+	return string(h.Sum(nil))
 }

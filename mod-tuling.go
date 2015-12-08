@@ -60,7 +60,7 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			ReplyAuto(m.client, msg, m.GetAnswer(msg.Text))
+			ReplyAuto(m.client, msg, m.GetAnswer(msg.Text, GetMd5(msg.Remote)))
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
@@ -72,7 +72,7 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 			}
 			if ok, message := RoomsMsgCallBot(rooms, msg); ok {
 				roomid, _ := SplitJID(msg.Remote)
-				SendPub(m.client, roomid, m.GetAnswer(message))
+				SendPub(m.client, roomid, m.GetAnswer(message, GetMd5(msg.Remote)))
 			}
 		}
 	}
@@ -106,9 +106,9 @@ func (m *Tuling) SetOption(key, val string) {
 	}
 }
 
-func (m *Tuling) Request(words string) (text string, err error) {
+func (m *Tuling) Request(words, uid string) (text string, err error) {
 
-	resp, err := http.Get(fmt.Sprintf("%s?key=%s&loc=%s&info=%s", m.URL, m.Key, "北京上地", words))
+	resp, err := http.Get(fmt.Sprintf("%s?key=%s&userid=%s&loc=%s&info=%s", m.URL, m.Key, uid, "北京上地", words))
 	if err != nil {
 		return "", err
 	}
@@ -148,10 +148,10 @@ func (m *Tuling) Request(words string) (text string, err error) {
 	return text, nil
 }
 
-func (m *Tuling) GetAnswer(text string) string {
+func (m *Tuling) GetAnswer(text, uid string) string {
 	txt := strings.TrimSpace(text)
 
-	if text, err := m.Request(txt); err != nil {
+	if text, err := m.Request(txt, uid); err != nil {
 		return "我知道了"
 	} else {
 		return strings.Replace(text, "图灵", "", -1)
