@@ -27,9 +27,13 @@ nickname = "bot"
 
 ######## 插件配置项 ########
 [plugin.auto-reply]
-enable = true
+enable = false
 fuck = "fuck.txt"
 random = "random.txt"
+
+[plugin.tuling]
+enable = true
+key = "xxxyyyy"
 
 [plugin.logger]
 enable = true
@@ -41,7 +45,7 @@ logger = "xmpplog.sqlite"
 enable = true
 chat = true
 room = true
-timeout = 2
+timeout = 5
 
 [plugin.ip]
 enable = true

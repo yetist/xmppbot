@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"github.com/robfig/cron"
 	"log"
 	"os"
 	"strconv"
@@ -26,7 +27,7 @@ func init() {
 	flag.StringVar(&config.Setup.StatusMessage, "status-msg", config.Setup.StatusMessage, "status message")
 }
 
-func NewClient() (talk *xmpp.Client, err error) {
+func NewClient() (client *xmpp.Client, err error) {
 	options := xmpp.Options{
 		Host:          config.Account.Server + ":" + strconv.Itoa(config.Account.Port),
 		User:          config.Account.Username,
@@ -39,7 +40,7 @@ func NewClient() (talk *xmpp.Client, err error) {
 		StatusMessage: config.Setup.StatusMessage,
 	}
 
-	talk, err = options.NewClient()
+	client, err = options.NewClient()
 	return
 }
 
@@ -70,17 +71,20 @@ func main() {
 		InsecureSkipVerify: config.Account.NoTLS, //如果没有tls，就跳过检查。
 	}
 
-	talk, err := NewClient()
+	client, err := NewClient()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	PluginBegin(talk)
+	PluginBegin(client)
+	cron := cron.New()
+	cron.AddFunc("* */1 * * * ?", func() { client.PingC2S(config.Account.Username, config.Account.Server) })
+	cron.Start()
 
 	go func() {
 		for {
-			chat, err := talk.Recv()
+			chat, err := client.Recv()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -102,7 +106,7 @@ func main() {
 
 		tokens := strings.SplitN(line, " ", 2)
 		if len(tokens) == 2 {
-			talk.Send(xmpp.Chat{Remote: tokens[0], Type: "chat", Text: tokens[1]})
+			client.Send(xmpp.Chat{Remote: tokens[0], Type: "chat", Text: tokens[1]})
 		}
 	}
 }

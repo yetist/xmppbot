@@ -67,15 +67,19 @@ func RoomsMsgFromBot(rooms []*Room, msg xmpp.Chat) bool {
 }
 
 // bot 在群里被点名了吗？
-func RoomsMsgCallBot(rooms []*Room, msg xmpp.Chat) bool {
+func RoomsMsgCallBot(rooms []*Room, msg xmpp.Chat) (ok bool, text string) {
 	if msg.Type == "groupchat" {
 		for _, v := range rooms {
 			if strings.Contains(msg.Text, v.Nickname) {
-				return true
+				if strings.HasPrefix(msg.Text, v.Nickname+":") {
+					return true, msg.Text[len(v.Nickname)+1:]
+				} else {
+					return true, strings.Replace(msg.Text, v.Nickname, "", -1)
+				}
 			}
 		}
 	}
-	return false
+	return false, msg.Text
 }
 
 // 此人在聊天中被忽略了吗?

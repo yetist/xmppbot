@@ -96,11 +96,10 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 				roomid, nick := SplitJID(msg.Remote)
 				SendPub(m.client, roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
-			if !RoomsMsgCallBot(rooms, msg) {
-				return
+			if ok, _ := RoomsMsgCallBot(rooms, msg); ok {
+				roomid, _ := SplitJID(msg.Remote)
+				SendPub(m.client, roomid, m.RandomList[rand.Intn(len(m.RandomList))])
 			}
-			roomid, _ := SplitJID(msg.Remote)
-			SendPub(m.client, roomid, m.RandomList[rand.Intn(len(m.RandomList))])
 		}
 	}
 }
