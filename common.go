@@ -278,5 +278,5 @@ func getBase64Image(body []byte, width, height int) string {
 func GetMd5(str string) string {
 	h := md5.New()
 	io.WriteString(h, str)
-	return string(h.Sum(nil))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
