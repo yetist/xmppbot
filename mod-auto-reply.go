@@ -15,7 +15,7 @@ type AutoReply struct {
 	Random     string
 	FuckList   []string
 	RandomList []string
-	client     *xmpp.Client
+	bot        *Bot
 	Option     map[string]bool
 }
 
@@ -49,9 +49,9 @@ func (m *AutoReply) CheckEnv() bool {
 	return true
 }
 
-func (m *AutoReply) Begin(client *xmpp.Client) {
+func (m *AutoReply) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
-	m.client = client
+	m.bot = bot
 	rand.Seed(time.Now().Unix())
 
 	if data, err := ioutil.ReadFile(GetDataPath(m.Fuck)); err == nil {
@@ -63,8 +63,8 @@ func (m *AutoReply) Begin(client *xmpp.Client) {
 	}
 }
 
-func (m *AutoReply) End() {
-	fmt.Printf("%s End\n", m.GetName())
+func (m *AutoReply) Stop() {
+	fmt.Printf("[%s] Stop\n", m.GetName())
 }
 
 func (m *AutoReply) Restart() {
@@ -74,31 +74,30 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
-	admin := GetAdminPlugin()
+	admin := m.bot.GetAdminPlugin()
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
 			if msg.Text == admin.GetCmdString("fuck") {
-				ReplyAuto(m.client, msg, m.FuckList[rand.Intn(len(m.FuckList))])
+				m.bot.ReplyAuto(msg, m.FuckList[rand.Intn(len(m.FuckList))])
 			} else {
-				ReplyAuto(m.client, msg, m.RandomList[rand.Intn(len(m.RandomList))])
+				m.bot.ReplyAuto(msg, m.RandomList[rand.Intn(len(m.RandomList))])
 			}
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
-			admin := GetAdminPlugin()
-			rooms := admin.GetRooms()
+			admin := m.bot.GetAdminPlugin()
 			//忽略bot自己发送的消息
-			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
+			if m.bot.SendThis(msg) || m.bot.BlockRemote(msg) {
 				return
 			}
 			if msg.Text == admin.GetCmdString("fuck") {
 				roomid, nick := SplitJID(msg.Remote)
-				SendPub(m.client, roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
+				m.bot.SendPub(roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
-			if ok, _ := RoomsMsgCallBot(rooms, msg); ok {
+			if ok, _ := m.bot.Called(msg); ok {
 				roomid, _ := SplitJID(msg.Remote)
-				SendPub(m.client, roomid, m.RandomList[rand.Intn(len(m.RandomList))])
+				m.bot.SendPub(roomid, m.RandomList[rand.Intn(len(m.RandomList))])
 			}
 		}
 	}
@@ -108,7 +107,7 @@ func (m *AutoReply) Presence(pres xmpp.Presence) {
 }
 
 func (m *AutoReply) Help() string {
-	admin := GetAdminPlugin()
+	admin := m.bot.GetAdminPlugin()
 	msg := []string{
 		"AutoReply模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
 		"支持以下命令：",

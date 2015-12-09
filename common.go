@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/mattn/go-xmpp"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"
@@ -30,16 +29,6 @@ func SplitJID(jid string) (string, string) {
 	} else {
 		return jid, ""
 	}
-}
-
-func IsAdmin(jid string) bool {
-	u, _ := SplitJID(jid)
-	for _, admin := range config.Setup.Admin {
-		if u == admin {
-			return true
-		}
-	}
-	return false
 }
 
 func IsValidStatus(status string) bool {
@@ -76,11 +65,6 @@ func BoolToString(val bool) string {
 	}
 }
 
-// 设置状态消息
-func SetStatus(client *xmpp.Client, status, info string) {
-	client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", status, info))
-}
-
 func MapDelete(dict map[string]interface{}, key string) {
 	_, ok := dict[key]
 	if ok {
@@ -106,63 +90,14 @@ func ListDelete(list []string, key string) []string {
 	return list
 }
 
-func SendHtml(client *xmpp.Client, chat xmpp.Chat) {
-	text := strings.Replace(chat.Text, "&", "&amp;", -1)
-	org := fmt.Sprintf("<message to='%s' type='%s' xml:lang='en'><body>%s</body>"+
-		"<html xmlns='http://jabber.org/protocol/xhtml-im'><body xmlns='http://www.w3.org/1999/xhtml'>%s</body></html></message>",
-		html.EscapeString(chat.Remote), html.EscapeString(chat.Type), html.EscapeString(chat.Text), text)
-	client.SendOrg(org)
-}
-
-// 回复好友消息，或聊天室私聊消息
-func ReplyAuto(client *xmpp.Client, recv xmpp.Chat, text string) {
-	if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
-		SendHtml(client, xmpp.Chat{Remote: recv.Remote, Type: "chat", Text: text})
-	} else {
-		client.Send(xmpp.Chat{Remote: recv.Remote, Type: "chat", Text: text})
-	}
-}
-
-// 回复好友消息，或聊天室公共消息
-func ReplyPub(client *xmpp.Client, recv xmpp.Chat, text string) {
-	if recv.Type == "groupchat" {
-		roomid, _ := SplitJID(recv.Remote)
-		if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
-			SendHtml(client, xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
-		} else {
-			client.Send(xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
-		}
-	} else {
-		ReplyAuto(client, recv, text)
-	}
-}
-
-// 发送到好友消息，或聊天室私聊消息
-func SendAuto(client *xmpp.Client, to, text string) {
-	if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
-		SendHtml(client, xmpp.Chat{Remote: to, Type: "chat", Text: text})
-	} else {
-		client.Send(xmpp.Chat{Remote: to, Type: "chat", Text: text})
-	}
-}
-
-// 发送聊天室公共消息
-func SendPub(client *xmpp.Client, to, text string) {
-	if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
-		SendHtml(client, xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
-	} else {
-		client.Send(xmpp.Chat{Remote: to, Type: "groupchat", Text: text})
-	}
-}
-
-func ChatMsgFromBot(msg xmpp.Chat) bool {
-	if msg.Type == "chat" {
-		if id, res := SplitJID(msg.Remote); id == config.Account.Username && res == config.Account.Resource {
-			return true
-		}
-	}
-	return false
-}
+//func ChatMsgFromBot(msg xmpp.Chat) bool {
+//	if msg.Type == "chat" {
+//		if id, res := SplitJID(msg.Remote); id == config.Account.Username && res == config.Account.Resource {
+//			return true
+//		}
+//	}
+//	return false
+//}
 
 func HttpOpen(url string, n time.Duration) (res *http.Response, body []byte, err error) {
 	timeout := n * time.Second

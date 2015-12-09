@@ -9,7 +9,7 @@ import (
 
 type Admin struct {
 	Name      string
-	client    *xmpp.Client
+	bot       *Bot
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
@@ -83,35 +83,35 @@ func (m *Admin) CheckEnv() bool {
 	return true
 }
 
-func (m *Admin) Begin(client *xmpp.Client) {
+func (m *Admin) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
-	m.client = client
+	m.bot = bot
 	m.loginTime = time.Now()
-	//m.client.Roster()
+	//m.bot.GetClient().Roster()
 	for _, room := range m.Rooms {
 		if len(room.Password) > 0 {
-			m.client.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
+			m.bot.GetClient().JoinProtectedMUC(room.JID, room.Nickname, room.Password)
 		} else {
-			m.client.JoinMUC(room.JID, room.Nickname)
+			m.bot.GetClient().JoinMUC(room.JID, room.Nickname)
 		}
 		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)
 	}
 }
 
-func (m *Admin) End() {
+func (m *Admin) Stop() {
 	for _, room := range m.Rooms {
-		m.client.LeaveMUC(room.JID)
+		m.bot.GetClient().LeaveMUC(room.JID)
 		fmt.Printf("[%s] Leave from %s\n", m.Name, room.JID)
 	}
 }
 
 func (m *Admin) Restart() {
-	m.End()
+	m.Stop()
 	LoadConfig(AppName, AppVersion, AppConfig)
 	m.Option["cmd_prefix"] = config.Setup.CmdPrefix
 	m.Option["auto-subscribe"] = config.Setup.AutoSubscribe
-	m.client.Roster()
-	SetStatus(m.client, config.Setup.Status, config.Setup.StatusMessage)
+	m.bot.GetClient().Roster()
+	m.bot.SetStatus(config.Setup.Status, config.Setup.StatusMessage)
 
 	var rooms []*Room
 	for _, i := range config.Setup.Rooms {
@@ -123,7 +123,7 @@ func (m *Admin) Restart() {
 		rooms = append(rooms, room)
 	}
 	m.Rooms = rooms
-	m.Begin(m.client)
+	m.Start(m.bot)
 }
 
 func (m *Admin) Chat(msg xmpp.Chat) {
@@ -154,10 +154,10 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 	//处理订阅消息
 	if pres.Type == "subscribe" {
 		if m.Option["auto-subscribe"].(bool) {
-			m.client.ApproveSubscription(pres.From)
-			m.client.RequestSubscription(pres.From)
+			m.bot.GetClient().ApproveSubscription(pres.From)
+			m.bot.GetClient().RequestSubscription(pres.From)
 		} else {
-			m.client.RevokeSubscription(pres.From)
+			m.bot.GetClient().RevokeSubscription(pres.From)
 		}
 	}
 }
@@ -203,7 +203,7 @@ func (m *Admin) GetCmdString(cmd string) string {
 func (m *Admin) VersionCommand(cmd string, msg xmpp.Chat) {
 	//TODO: version
 	if cmd == "" || cmd == "help" {
-		ReplyPub(m.client, msg, AppName+"-"+AppVersion)
+		m.bot.ReplyPub(msg, AppName+"-"+AppVersion)
 	}
 }
 
@@ -213,29 +213,29 @@ func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
 	} else if len(cmd) > 0 {
 		m.cmd_help_plugin(cmd, msg)
 	} else {
-		ReplyAuto(m.client, msg, "不支持的命令: "+cmd)
+		m.bot.ReplyAuto(msg, "不支持的命令: "+cmd)
 	}
 }
 
 func (m *Admin) cmd_help_all(cmd string, msg xmpp.Chat) {
 	help_msg := []string{"==所有插件帮助信息=="}
-	for _, v := range plugins {
+	for _, v := range m.bot.GetPlugins() {
 		help_msg = append(help_msg, "=="+v.GetName()+"模块帮助信息==")
 		help_msg = append(help_msg, v.Help())
 	}
-	ReplyAuto(m.client, msg, strings.Join(help_msg, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }
 
 func (m *Admin) cmd_help_plugin(cmd string, msg xmpp.Chat) {
 	var helps []string
 	names := strings.Split(cmd, " ")
 	for _, name := range names {
-		if v := GetPluginByName(name); v != nil {
+		if v := m.bot.GetPluginByName(name); v != nil {
 			helps = append(helps, "=="+v.GetName()+"帮助信息==")
 			helps = append(helps, v.Help())
 		}
 	}
-	ReplyAuto(m.client, msg, strings.Join(helps, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(helps, "\n"))
 }
 
 func (m *Admin) RoomCommand(cmd string, msg xmpp.Chat) {
@@ -252,7 +252,7 @@ func (m *Admin) RoomCommand(cmd string, msg xmpp.Chat) {
 	} else if strings.HasPrefix(cmd, "unblock ") {
 		m.room_unblock(cmd, msg)
 	} else {
-		ReplyAuto(m.client, msg, "不支持的命令: "+cmd)
+		m.bot.ReplyAuto(msg, "不支持的命令: "+cmd)
 	}
 }
 
@@ -267,7 +267,7 @@ func (m *Admin) room_help(cmd string, msg xmpp.Chat) {
 		m.GetCmdString("room") + " block <jid|all> <who>     屏蔽who，对who发送的消息不响应",
 		m.GetCmdString("room") + " unblock <jid|all> <who>   重新对who发送的消息进行响应",
 	}
-	ReplyAuto(m.client, msg, strings.Join(help_msg, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }
 
 func (m *Admin) room_msg(cmd string, msg xmpp.Chat) {
@@ -278,14 +278,14 @@ func (m *Admin) room_msg(cmd string, msg xmpp.Chat) {
 	}
 	if tokens[1] == "all" {
 		for _, v := range m.Rooms {
-			SendPub(m.client, v.JID, tokens[2])
+			m.bot.SendPub(v.JID, tokens[2])
 		}
 	} else {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
-				SendPub(m.client, tokens[1], tokens[2])
+				m.bot.SendPub(tokens[1], tokens[2])
 			} else {
-				ReplyAuto(m.client, msg, "Bot未进入此聊天室")
+				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}
 		}
 	}
@@ -298,14 +298,14 @@ func (m *Admin) room_nick(cmd string, msg xmpp.Chat) {
 	}
 	if tokens[1] == "all" {
 		for _, v := range m.Rooms {
-			v.SetNick(m.client, tokens[2])
+			v.SetNick(m.bot.GetClient(), tokens[2])
 		}
 	} else {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
-				v.SetNick(m.client, tokens[2])
+				v.SetNick(m.bot.GetClient(), tokens[2])
 			} else {
-				ReplyAuto(m.client, msg, "Bot未进入此聊天室")
+				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}
 		}
 	}
@@ -327,11 +327,11 @@ func (m *Admin) room_list_blocks(cmd string, msg xmpp.Chat) {
 			if v.JID == tokens[1] {
 				blocks = append(blocks, v.ListBlocks())
 			} else {
-				ReplyAuto(m.client, msg, "Bot未进入此聊天室")
+				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}
 		}
 	}
-	ReplyAuto(m.client, msg, strings.Join(blocks, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(blocks, "\n"))
 }
 
 func (m *Admin) room_block(cmd string, msg xmpp.Chat) {
@@ -342,16 +342,16 @@ func (m *Admin) room_block(cmd string, msg xmpp.Chat) {
 	}
 	if tokens[1] == "all" {
 		for _, v := range m.Rooms {
-			SendPub(m.client, v.JID, "/me 忽略了 "+tokens[2]+" 的消息")
+			m.bot.SendPub(v.JID, "/me 忽略了 "+tokens[2]+" 的消息")
 			v.BlockOne(tokens[2])
 		}
 	} else {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
-				SendPub(m.client, v.JID, "/me 忽略了 "+tokens[2]+" 的消息")
+				m.bot.SendPub(v.JID, "/me 忽略了 "+tokens[2]+" 的消息")
 				v.BlockOne(tokens[2])
 			} else {
-				ReplyAuto(m.client, msg, "Bot未进入此聊天室")
+				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}
 		}
 	}
@@ -365,16 +365,16 @@ func (m *Admin) room_unblock(cmd string, msg xmpp.Chat) {
 	}
 	if tokens[1] == "all" {
 		for _, v := range m.Rooms {
-			SendPub(m.client, v.JID, "/me 开始关注 "+tokens[2]+" 的消息")
+			m.bot.SendPub(v.JID, "/me 开始关注 "+tokens[2]+" 的消息")
 			v.UnBlockOne(tokens[2])
 		}
 	} else {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
-				SendPub(m.client, v.JID, "/me 开始关注 "+tokens[2]+" 的消息")
+				m.bot.SendPub(v.JID, "/me 开始关注 "+tokens[2]+" 的消息")
 				v.UnBlockOne(tokens[2])
 			} else {
-				ReplyAuto(m.client, msg, "Bot未进入此聊天室")
+				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}
 		}
 	}
@@ -382,7 +382,7 @@ func (m *Admin) room_unblock(cmd string, msg xmpp.Chat) {
 
 func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 	if !m.IsAdmin(msg.Remote) {
-		ReplyAuto(m.client, msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
+		m.bot.ReplyAuto(msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
 		return
 	}
 	if cmd == "" || cmd == "help" {
@@ -420,7 +420,7 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 	} else if strings.HasPrefix(cmd, "leave-room") {
 		m.admin_leave_room(cmd, msg)
 	} else {
-		ReplyAuto(m.client, msg, "不支持的命令: "+cmd)
+		m.bot.ReplyAuto(msg, "不支持的命令: "+cmd)
 	}
 }
 
@@ -448,12 +448,12 @@ func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 		m.GetCmdString("sudo") + " join-room <jid> <nickname> [password]  加入聊天室",
 		m.GetCmdString("sudo") + " leave-room <jid>                       离开聊天室",
 	}
-	ReplyAuto(m.client, msg, strings.Join(help_msg, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }
 
 func (m *Admin) admin_restart(cmd string, msg xmpp.Chat) {
 	m.Restart() //重启内置插件
-	PluginRestart(m.client)
+	m.bot.Restart()
 }
 
 func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
@@ -468,30 +468,30 @@ func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
 			names = append(names, name+"[禁用]")
 		}
 	}
-	ReplyAuto(m.client, msg, strings.Join(names, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(names, "\n"))
 }
 
 func (m *Admin) admin_list_plugins(cmd string, msg xmpp.Chat) {
 	names := []string{"==运行中插件列表=="}
 
-	for _, v := range plugins {
+	for _, v := range m.bot.GetPlugins() {
 		names = append(names, v.GetName()+" -- "+v.GetSummary())
 	}
-	ReplyAuto(m.client, msg, strings.Join(names, "\n"))
+	m.bot.ReplyAuto(msg, strings.Join(names, "\n"))
 }
 
 func (m *Admin) admin_disable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if tokens[1] == m.Name {
-		ReplyAuto(m.client, msg, m.Name+"是内置模块，不允许禁用")
+		m.bot.ReplyAuto(msg, m.Name+"是内置模块，不允许禁用")
 	} else {
-		PluginRemove(tokens[1])
+		m.bot.RemovePlugin(tokens[1])
 	}
 }
 
 func (m *Admin) admin_enable_plugin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
-	PluginAdd(tokens[1], m.client)
+	m.bot.AddPlugin(tokens[1])
 }
 
 func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
@@ -502,46 +502,46 @@ func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
 		info = tokens[2]
 	}
 	if IsValidStatus(tokens[1]) {
-		SetStatus(m.client, tokens[1], info)
+		m.bot.SetStatus(tokens[1], info)
 	} else {
-		ReplyAuto(m.client, msg, "设置状态失败，有效的状态为: away, chat, dnd, xa.")
+		m.bot.ReplyAuto(msg, "设置状态失败，有效的状态为: away, chat, dnd, xa.")
 	}
 }
 
 func (m *Admin) admin_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		m.client.RequestSubscription(tokens[1])
+		m.bot.GetClient().RequestSubscription(tokens[1])
 	}
 }
 
 func (m *Admin) admin_unsubscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		if IsAdmin(tokens[1]) {
-			ReplyAuto(m.client, msg, tokens[1]+"是管理员，不允许从好友中删除！")
+		if m.bot.IsAdminID(tokens[1]) {
+			m.bot.ReplyAuto(msg, tokens[1]+"是管理员，不允许从好友中删除！")
 		} else {
-			m.client.RevokeSubscription(tokens[1])
+			m.bot.GetClient().RevokeSubscription(tokens[1])
 		}
 	}
 }
 
 func (m *Admin) admin_list_admin(cmd string, msg xmpp.Chat) {
 	txt := "==管理员列表==\n" + strings.Join(m.Option["admin"].([]string), "\n")
-	ReplyAuto(m.client, msg, txt)
+	m.bot.ReplyAuto(msg, txt)
 }
 
 func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
 		if m.IsAdmin(tokens[1]) {
-			ReplyAuto(m.client, msg, tokens[1]+" 已是管理员用户，不需再次增加！")
+			m.bot.ReplyAuto(msg, tokens[1]+" 已是管理员用户，不需再次增加！")
 		} else {
-			m.client.RequestSubscription(tokens[1])
+			m.bot.GetClient().RequestSubscription(tokens[1])
 			m.Option["admin"] = append(m.Option["admin"].([]string), tokens[1])
-			ReplyAuto(m.client, msg, "您已添加 "+tokens[1]+"为管理员!")
+			m.bot.ReplyAuto(msg, "您已添加 "+tokens[1]+"为管理员!")
 			jid, _ := SplitJID(msg.Remote)
-			SendAuto(m.client, tokens[1], jid+" 临时添加您为管理员!")
+			m.bot.SendAuto(tokens[1], jid+" 临时添加您为管理员!")
 		}
 	}
 }
@@ -549,17 +549,17 @@ func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	jid, _ := SplitJID(msg.Remote)
-	if IsAdmin(tokens[1]) && tokens[1] != jid {
+	if m.bot.IsAdminID(tokens[1]) && tokens[1] != jid {
 		m.Option["admin"] = ListDelete(m.Option["admin"].([]string), tokens[1])
-		SendAuto(m.client, tokens[1], jid+" 临时取消了您的管理员身份!")
+		m.bot.SendAuto(tokens[1], jid+" 临时取消了您的管理员身份!")
 	} else {
-		ReplyAuto(m.client, msg, "不能取消 "+tokens[1]+" 的管理员身份!")
+		m.bot.ReplyAuto(msg, "不能取消 "+tokens[1]+" 的管理员身份!")
 	}
 }
 
 func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
 	options := map[string]string{}
-	for _, mod := range plugins {
+	for _, mod := range m.bot.GetPlugins() {
 		for k, v := range mod.GetOptions() {
 			options[mod.GetName()+"."+k] = v
 		}
@@ -571,14 +571,14 @@ func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
 		opt_list = append(opt_list, fmt.Sprintf("%-20s : %s", v, options[v]))
 	}
 	txt := "==所有模块可配置选项==\n" + strings.Join(opt_list, "\n")
-	ReplyAuto(m.client, msg, txt)
+	m.bot.ReplyAuto(msg, txt)
 }
 
 func (m *Admin) admin_set_option(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 3)
 	if len(tokens) == 3 {
 		modkey := strings.SplitN(tokens[1], ".", 2)
-		for _, mod := range plugins {
+		for _, mod := range m.bot.GetPlugins() {
 			if modkey[0] == mod.GetName() {
 				mod.SetOption(modkey[1], tokens[2])
 			}
@@ -592,7 +592,7 @@ func (m *Admin) admin_list_rooms(cmd string, msg xmpp.Chat) {
 		opt_list = append(opt_list, fmt.Sprintf("%2d: %s as %s", k+1, v.JID, v.Nickname))
 	}
 	txt := "==聊天室列表==\n" + strings.Join(opt_list, "\n")
-	ReplyAuto(m.client, msg, txt)
+	m.bot.ReplyAuto(msg, txt)
 }
 
 func (m *Admin) admin_join_room(cmd string, msg xmpp.Chat) {
@@ -600,14 +600,14 @@ func (m *Admin) admin_join_room(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 4)
 	if len(tokens) == 4 {
 		room := NewRoom(tokens[1], tokens[2], tokens[3])
-		m.client.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
+		m.bot.GetClient().JoinProtectedMUC(room.JID, room.Nickname, room.Password)
 		m.Rooms = append(m.Rooms, room)
-		ReplyAuto(m.client, msg, "已经进入聊天室"+room.JID)
+		m.bot.ReplyAuto(msg, "已经进入聊天室"+room.JID)
 	} else if len(tokens) == 3 {
 		room := NewRoom(tokens[1], tokens[2], "")
-		m.client.JoinMUC(room.JID, room.Nickname)
+		m.bot.GetClient().JoinMUC(room.JID, room.Nickname)
 		m.Rooms = append(m.Rooms, room)
-		ReplyAuto(m.client, msg, "已经进入聊天室"+room.JID)
+		m.bot.ReplyAuto(msg, "已经进入聊天室"+room.JID)
 	}
 }
 
@@ -618,16 +618,16 @@ func (m *Admin) admin_leave_room(cmd string, msg xmpp.Chat) {
 		roomid := -1
 		for k, room := range m.Rooms {
 			if room.JID == tokens[1] {
-				m.client.LeaveMUC(room.JID)
+				m.bot.GetClient().LeaveMUC(room.JID)
 				roomid = k
 			}
 			fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)
 		}
 		if roomid != -1 {
 			m.Rooms = append(m.Rooms[:roomid], m.Rooms[roomid+1:]...)
-			ReplyAuto(m.client, msg, "已经退出群聊"+tokens[1])
+			m.bot.ReplyAuto(msg, "已经退出群聊"+tokens[1])
 		}
 	} else {
-		ReplyAuto(m.client, msg, "命令参数或聊天室id不正确")
+		m.bot.ReplyAuto(msg, "命令参数或聊天室id不正确")
 	}
 }

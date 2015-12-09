@@ -12,7 +12,7 @@ import (
 
 type UrlHelper struct {
 	Name   string
-	client *xmpp.Client
+	bot    *Bot
 	Option map[string]interface{}
 }
 
@@ -41,13 +41,13 @@ func (m *UrlHelper) CheckEnv() bool {
 	return true
 }
 
-func (m *UrlHelper) Begin(client *xmpp.Client) {
+func (m *UrlHelper) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
-	m.client = client
+	m.bot = bot
 }
 
-func (m *UrlHelper) End() {
-	fmt.Printf("%s End\n", m.GetName())
+func (m *UrlHelper) Stop() {
+	fmt.Printf("[%s] Stop\n", m.GetName())
 }
 
 func (m *UrlHelper) Restart() {
@@ -66,26 +66,24 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"].(bool) {
-			if ChatMsgFromBot(msg) {
+			if m.bot.SendThis(msg) {
 				return
 			}
 			text := m.GetHelper(msg.Text)
 			if text != "" {
-				ReplyAuto(m.client, msg, fmt.Sprintf("<p>%s</p>", text))
+				m.bot.ReplyAuto(msg, fmt.Sprintf("<p>%s</p>", text))
 			}
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"].(bool) {
-			admin := GetAdminPlugin()
-			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
-			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
+			if m.bot.SendThis(msg) || m.bot.BlockRemote(msg) {
 				return
 			}
 			text := m.GetHelper(msg.Text)
 			if text != "" {
 				roomid, nick := SplitJID(msg.Remote)
-				SendPub(m.client, roomid, fmt.Sprintf("<p>%s %s</p>", nick, text))
+				m.bot.SendPub(roomid, fmt.Sprintf("<p>%s %s</p>", nick, text))
 			}
 		}
 	}

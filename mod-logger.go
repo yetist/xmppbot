@@ -11,8 +11,8 @@ import (
 
 type Logger struct {
 	Name   string
-	client *xmpp.Client
 	Option map[string]bool
+	bot    *Bot
 	x      *xorm.Engine
 }
 
@@ -44,7 +44,7 @@ func (m *Logger) GetName() string {
 }
 
 func (m *Logger) GetSummary() string {
-	return "聊天日志记录"
+	return "记录聊天日志"
 }
 
 type ChatLogger struct {
@@ -90,9 +90,9 @@ func (m *Logger) CheckEnv() bool {
 		fmt.Printf("[%s] Database initial error, disable this plugin.\n", m.GetName())
 		return false
 	}
-	m.x.ShowDebug = true
-	m.x.ShowErr = true
-	m.x.ShowSQL = true
+	//m.x.ShowDebug = true
+	//m.x.ShowErr = true
+	//m.x.ShowSQL = true
 	m.x.SetMaxConns(10)
 
 	cacher := xorm.NewLRUCacher(xorm.NewMemoryStore(), 10000)
@@ -102,13 +102,13 @@ func (m *Logger) CheckEnv() bool {
 	return true
 }
 
-func (m *Logger) Begin(client *xmpp.Client) {
+func (m *Logger) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
-	m.client = client
+	m.bot = bot
 }
 
-func (m *Logger) End() {
-	fmt.Printf("%s End\n", m.GetName())
+func (m *Logger) Stop() {
+	fmt.Printf("[%s] Stop\n", m.GetName())
 }
 
 func (m *Logger) Restart() {
@@ -134,7 +134,6 @@ func (m *Logger) Presence(pres xmpp.Presence) {
 }
 
 func (m *Logger) Help() string {
-	//admin := GetAdminPlugin()
 	msg := []string{
 		"Logger模块为自动响应模块，当有好友或群聊消息时将自动记录",
 	}
@@ -145,9 +144,9 @@ func (m *Logger) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = BoolToString(v) + "  #是否记录朋友发送的日志"
+			opts[k] = BoolToString(v) + "  #是否响应好友消息"
 		} else if k == "room" {
-			opts[k] = BoolToString(v) + "  #是否记录群聊日志"
+			opts[k] = BoolToString(v) + "  #是否响应群聊消息"
 		}
 	}
 	return opts

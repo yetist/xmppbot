@@ -13,7 +13,7 @@ type Tuling struct {
 	Name   string
 	URL    string
 	Key    string
-	client *xmpp.Client
+	bot    *Bot
 	Option map[string]bool
 }
 
@@ -41,12 +41,12 @@ func (m *Tuling) CheckEnv() bool {
 	return true
 }
 
-func (m *Tuling) Begin(client *xmpp.Client) {
+func (m *Tuling) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
-	m.client = client
+	m.bot = bot
 }
 
-func (m *Tuling) End() {
+func (m *Tuling) Stop() {
 	fmt.Printf("%s End\n", m.GetName())
 }
 
@@ -58,7 +58,7 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 		return
 	}
 
-	admin := GetAdminPlugin()
+	admin := m.bot.GetAdminPlugin()
 	//忽略命令消息
 	if admin.IsCmd(msg.Text) {
 		return
@@ -66,18 +66,17 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			ReplyAuto(m.client, msg, m.GetAnswer(msg.Text, GetMd5(msg.Remote)))
+			m.bot.ReplyAuto(msg, m.GetAnswer(msg.Text, GetMd5(msg.Remote)))
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
-			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
-			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {
+			if m.bot.SendThis(msg) || m.bot.BlockRemote(msg) {
 				return
 			}
-			if ok, message := RoomsMsgCallBot(rooms, msg); ok {
+			if ok, message := m.bot.Called(msg); ok {
 				roomid, _ := SplitJID(msg.Remote)
-				SendPub(m.client, roomid, m.GetAnswer(message, GetMd5(msg.Remote)))
+				m.bot.SendPub(roomid, m.GetAnswer(message, GetMd5(msg.Remote)))
 			}
 		}
 	}
