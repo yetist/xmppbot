@@ -87,12 +87,12 @@ func (m *Admin) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 	m.loginTime = time.Now()
-	//m.bot.GetClient().Roster()
+	m.bot.Roster()
 	for _, room := range m.Rooms {
 		if len(room.Password) > 0 {
-			m.bot.GetClient().JoinProtectedMUC(room.JID, room.Nickname, room.Password)
+			m.bot.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
 		} else {
-			m.bot.GetClient().JoinMUC(room.JID, room.Nickname)
+			m.bot.JoinMUC(room.JID, room.Nickname)
 		}
 		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)
 	}
@@ -100,7 +100,7 @@ func (m *Admin) Start(bot *Bot) {
 
 func (m *Admin) Stop() {
 	for _, room := range m.Rooms {
-		m.bot.GetClient().LeaveMUC(room.JID)
+		m.bot.LeaveMUC(room.JID)
 		fmt.Printf("[%s] Leave from %s\n", m.Name, room.JID)
 	}
 }
@@ -110,7 +110,7 @@ func (m *Admin) Restart() {
 	LoadConfig(AppName, AppVersion, AppConfig)
 	m.Option["cmd_prefix"] = config.Setup.CmdPrefix
 	m.Option["auto-subscribe"] = config.Setup.AutoSubscribe
-	m.bot.GetClient().Roster()
+	m.bot.Roster()
 	m.bot.SetStatus(config.Setup.Status, config.Setup.StatusMessage)
 
 	var rooms []*Room
@@ -154,10 +154,10 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 	//处理订阅消息
 	if pres.Type == "subscribe" {
 		if m.Option["auto-subscribe"].(bool) {
-			m.bot.GetClient().ApproveSubscription(pres.From)
-			m.bot.GetClient().RequestSubscription(pres.From)
+			m.bot.ApproveSubscription(pres.From)
+			m.bot.RequestSubscription(pres.From)
 		} else {
-			m.bot.GetClient().RevokeSubscription(pres.From)
+			m.bot.RevokeSubscription(pres.From)
 		}
 	}
 }
@@ -511,7 +511,7 @@ func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		m.bot.GetClient().RequestSubscription(tokens[1])
+		m.bot.RequestSubscription(tokens[1])
 	}
 }
 
@@ -521,7 +521,7 @@ func (m *Admin) admin_unsubscribe(cmd string, msg xmpp.Chat) {
 		if m.bot.IsAdminID(tokens[1]) {
 			m.bot.ReplyAuto(msg, tokens[1]+"是管理员，不允许从好友中删除！")
 		} else {
-			m.bot.GetClient().RevokeSubscription(tokens[1])
+			m.bot.RevokeSubscription(tokens[1])
 		}
 	}
 }
@@ -537,7 +537,7 @@ func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 		if m.IsAdmin(tokens[1]) {
 			m.bot.ReplyAuto(msg, tokens[1]+" 已是管理员用户，不需再次增加！")
 		} else {
-			m.bot.GetClient().RequestSubscription(tokens[1])
+			m.bot.RequestSubscription(tokens[1])
 			m.Option["admin"] = append(m.Option["admin"].([]string), tokens[1])
 			m.bot.ReplyAuto(msg, "您已添加 "+tokens[1]+"为管理员!")
 			jid, _ := SplitJID(msg.Remote)
@@ -600,12 +600,12 @@ func (m *Admin) admin_join_room(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 4)
 	if len(tokens) == 4 {
 		room := NewRoom(tokens[1], tokens[2], tokens[3])
-		m.bot.GetClient().JoinProtectedMUC(room.JID, room.Nickname, room.Password)
+		m.bot.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
 		m.Rooms = append(m.Rooms, room)
 		m.bot.ReplyAuto(msg, "已经进入聊天室"+room.JID)
 	} else if len(tokens) == 3 {
 		room := NewRoom(tokens[1], tokens[2], "")
-		m.bot.GetClient().JoinMUC(room.JID, room.Nickname)
+		m.bot.JoinMUC(room.JID, room.Nickname)
 		m.Rooms = append(m.Rooms, room)
 		m.bot.ReplyAuto(msg, "已经进入聊天室"+room.JID)
 	}
@@ -618,7 +618,7 @@ func (m *Admin) admin_leave_room(cmd string, msg xmpp.Chat) {
 		roomid := -1
 		for k, room := range m.Rooms {
 			if room.JID == tokens[1] {
-				m.bot.GetClient().LeaveMUC(room.JID)
+				m.bot.LeaveMUC(room.JID)
 				roomid = k
 			}
 			fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)

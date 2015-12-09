@@ -10,11 +10,11 @@ import (
 )
 
 type Bot struct {
-	client       *xmpp.Client
-	cron         *cron.Cron
-	web          *WebServer
-	plugins      []BotInterface
-	admin_plugin AdminInterface
+	client  *xmpp.Client
+	cron    *cron.Cron
+	web     *WebServer
+	plugins []BotInterface
+	admin   AdminInterface
 }
 
 type BotInterface interface {
@@ -68,7 +68,7 @@ func (b *Bot) Init() {
 	// 自动启用内置插件
 	admin := NewAdmin("admin")
 	b.plugins = append(b.plugins, admin)
-	b.admin_plugin = admin
+	b.admin = admin
 
 	for name, v := range config.Plugin {
 		if v["enable"].(bool) { //模块是否被启用
@@ -153,7 +153,7 @@ func (b *Bot) Restart() {
 
 //获取管理员模块
 func (b *Bot) GetAdminPlugin() AdminInterface {
-	return b.admin_plugin
+	return b.admin
 }
 
 //获取模块
@@ -201,6 +201,34 @@ func (b *Bot) AddPlugin(name string) {
 //TODO: delete the function
 func (b *Bot) GetClient() *xmpp.Client {
 	return b.client
+}
+
+func (b *Bot) JoinMUC(jid, nickname string) {
+	b.client.JoinMUC(jid, nickname)
+}
+
+func (b *Bot) JoinProtectedMUC(jid, nickname, password string) {
+	b.client.JoinProtectedMUC(jid, nickname, password)
+}
+
+func (b *Bot) LeaveMUC(jid string) {
+	b.client.LeaveMUC(jid)
+}
+
+func (b *Bot) Roster() error {
+	return b.client.Roster()
+}
+
+func (b *Bot) ApproveSubscription(jid string) {
+	b.ApproveSubscription(jid)
+}
+
+func (b *Bot) RevokeSubscription(jid string) {
+	b.RevokeSubscription(jid)
+}
+
+func (b *Bot) RequestSubscription(jid string) {
+	b.RequestSubscription(jid)
 }
 
 // 设置状态消息
@@ -275,7 +303,7 @@ func (b *Bot) SendThis(msg xmpp.Chat) bool {
 			return true
 		}
 	} else if msg.Type == "groupchat" {
-		for _, v := range b.admin_plugin.GetRooms() {
+		for _, v := range b.admin.GetRooms() {
 			if msg.Remote == v.JID+"/"+v.Nickname {
 				return true
 			}
@@ -287,7 +315,7 @@ func (b *Bot) SendThis(msg xmpp.Chat) bool {
 // 此人在聊天中被忽略了吗?
 func (b *Bot) BlockRemote(msg xmpp.Chat) bool {
 	if msg.Type == "groupchat" {
-		for _, v := range b.admin_plugin.GetRooms() {
+		for _, v := range b.admin.GetRooms() {
 			roomid, nick := SplitJID(msg.Remote)
 			if roomid == v.JID && v.IsBlocked(nick) {
 				return true
@@ -300,7 +328,7 @@ func (b *Bot) BlockRemote(msg xmpp.Chat) bool {
 // bot 在群里被点名了吗？
 func (b *Bot) Called(msg xmpp.Chat) (ok bool, text string) {
 	if msg.Type == "groupchat" {
-		for _, v := range b.admin_plugin.GetRooms() {
+		for _, v := range b.admin.GetRooms() {
 			if strings.Contains(msg.Text, v.Nickname) {
 				if strings.HasPrefix(msg.Text, v.Nickname+":") {
 					return true, msg.Text[len(v.Nickname)+1:]
