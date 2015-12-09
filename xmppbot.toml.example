@@ -5,7 +5,7 @@ resource = "bot"
 server = "jabber.org"
 port = 5222
 notls = false
-skip_verify = false #跳过ssl安全检查？
+self_signed = false # 服务器证书是自签名的
 session = false #如果不清楚，请设置为false
 
 [setup]

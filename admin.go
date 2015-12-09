@@ -148,7 +148,6 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 }
 
 func (m *Admin) Presence(pres xmpp.Presence) {
-	fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	if config.Setup.Debug {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
