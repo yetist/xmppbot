@@ -18,6 +18,7 @@ type Admin struct {
 type AdminInterface interface {
 	GetRooms() []*Room
 	IsAdmin(jid string) bool
+	IsCmd(text string) bool
 	GetCmdString(cmd string) string
 	LoginTime() time.Time
 }
@@ -147,6 +148,7 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 }
 
 func (m *Admin) Presence(pres xmpp.Presence) {
+	fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	if config.Setup.Debug {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
@@ -192,6 +194,9 @@ func (m *Admin) LoginTime() time.Time {
 	return m.loginTime.UTC()
 }
 
+func (m *Admin) IsCmd(text string) bool {
+	return strings.HasPrefix(strings.TrimSpace(text), m.Option["cmd_prefix"].(string))
+}
 func (m *Admin) GetCmdString(cmd string) string {
 	return m.Option["cmd_prefix"].(string) + cmd
 }

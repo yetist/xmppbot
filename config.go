@@ -27,6 +27,7 @@ type Config struct {
 		Server   string
 		Port     int
 		NoTLS    bool
+		SelfSign bool `toml:"self_signed"`
 		Session  bool
 	}
 	Setup struct {

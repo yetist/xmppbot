@@ -2,26 +2,41 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-xorm/xorm"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-xmpp"
 	"strings"
+	"time"
 )
 
 type Logger struct {
 	Name   string
 	client *xmpp.Client
 	Option map[string]bool
-	DBPath string
+	x      *xorm.Engine
 }
 
 func NewLogger(name string, opt map[string]interface{}) *Logger {
-	return &Logger{
-		Name:   name,
-		DBPath: opt["logger"].(string),
+	var err error
+
+	m := &Logger{
+		Name: name,
 		Option: map[string]bool{
 			"chat": opt["chat"].(bool),
 			"room": opt["room"].(bool),
 		},
 	}
+
+	switch opt["dbtype"].(string) {
+	case "sqlite3":
+		m.x, err = xorm.NewEngine("sqlite3", opt["dbname"].(string))
+	case "mysql":
+		m.x, err = xorm.NewEngine("mysql", opt["dbuser"].(string)+" "+opt["dbpass"].(string)+" "+opt["dbname"].(string))
+	}
+	if err != nil {
+		fmt.Printf("[%s] Database initial error: %v\n", name, err)
+	}
+	return m
 }
 
 func (m *Logger) GetName() string {
@@ -32,7 +47,58 @@ func (m *Logger) GetSummary() string {
 	return "聊天日志记录"
 }
 
+type ChatLogger struct {
+	Id      int64
+	JID     string
+	Nick    string
+	Text    string
+	IsRoom  bool
+	IsImage bool
+	Created time.Time `xorm:"created index"`
+	Updated time.Time `xorm:"updated index"`
+}
+
+func (m *Logger) LogInsert(msg xmpp.Chat) (err error) {
+	jid, nick := SplitJID(msg.Remote)
+	log := &ChatLogger{JID: jid, Nick: nick, Text: msg.Text}
+
+	if strings.Contains(msg.Text, "<img") {
+		log.IsImage = true
+	}
+	if msg.Type == "groupchat" {
+		log.IsRoom = true
+	}
+	_, err = m.x.InsertOne(log)
+	return
+}
+
+func (m *Logger) SelectAllText() ([]ChatLogger, error) {
+	logs := make([]ChatLogger, 0)
+	err := m.x.Find(&logs)
+	return logs, err
+}
+
+func (m *Logger) GetRoomLogs(jid string) ([]ChatLogger, error) {
+	logs := make([]ChatLogger, 0)
+	//err := x.Where("j_i_d = ?", jid).Where("direct = ?", 1).Limit(n).Desc("created").Find(&nets)
+	err := m.x.Where("j_i_d = ?", jid).Limit(1).Desc("created").Find(&logs)
+	return logs, err
+}
+
 func (m *Logger) CheckEnv() bool {
+	if m.x == nil {
+		fmt.Printf("[%s] Database initial error, disable this plugin.\n", m.GetName())
+		return false
+	}
+	m.x.ShowDebug = true
+	m.x.ShowErr = true
+	m.x.ShowSQL = true
+	m.x.SetMaxConns(10)
+
+	cacher := xorm.NewLRUCacher(xorm.NewMemoryStore(), 10000)
+	m.x.SetDefaultCacher(cacher)
+	m.x.Sync2(new(ChatLogger))
+
 	return true
 }
 
@@ -55,11 +121,11 @@ func (m *Logger) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			fmt.Printf("(%s), %s, %s, %s\n", m.Name, msg.Remote, msg.Text, msg.Stamp.Local())
+			m.LogInsert(msg)
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
-			fmt.Printf("(%s), %s, %s, %s\n", m.Name, msg.Remote, msg.Text, msg.Stamp.Local())
+			m.LogInsert(msg)
 		}
 	}
 }

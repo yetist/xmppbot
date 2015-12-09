@@ -40,11 +40,17 @@ func NewClient() (client *xmpp.Client, err error) {
 		StatusMessage: config.Setup.StatusMessage,
 	}
 
+	if config.Account.SelfSign || !config.Account.NoTLS {
+		options.TLSConfig = &tls.Config{
+			ServerName:         config.Account.Server,
+			InsecureSkipVerify: config.Account.SelfSign, //如果没有tls，就跳过检查。
+		}
+	}
 	client, err = options.NewClient()
 	return
 }
 
-func main() {
+func parseArgs() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: xmppbot [options]\n")
 		flag.PrintDefaults()
@@ -64,20 +70,34 @@ func main() {
 		fmt.Fprintf(os.Stderr, "invalid status setup, allowed are: away, chat, dnd, xa.\n")
 		os.Exit(1)
 	}
+}
+
+type Bot struct {
+	client *xmpp.Client
+	cron   *cron.Cron
+}
+
+func NewBot() (bot *Bot, err error) {
+	var client *xmpp.Client
+
+	if client, err = NewClient(); err != nil {
+		return
+	}
+	return &Bot{client: client, cron: cron.New()}, nil
+}
+
+func main() {
+	parseArgs()
 
 	PluginInit()
-	xmpp.DefaultConfig = tls.Config{
-		ServerName:         config.Account.Server,
-		InsecureSkipVerify: config.Account.NoTLS, //如果没有tls，就跳过检查。
-	}
 
 	client, err := NewClient()
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	PluginBegin(client)
+
 	cron := cron.New()
 	cron.AddFunc("* */1 * * * ?", func() { client.PingC2S(config.Account.Username, config.Account.Server) })
 	cron.Start()

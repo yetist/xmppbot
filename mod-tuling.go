@@ -58,13 +58,18 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 		return
 	}
 
+	admin := GetAdminPlugin()
+	//忽略命令消息
+	if admin.IsCmd(msg.Text) {
+		return
+	}
+
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
 			ReplyAuto(m.client, msg, m.GetAnswer(msg.Text, GetMd5(msg.Remote)))
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
-			admin := GetAdminPlugin()
 			rooms := admin.GetRooms()
 			//忽略bot自己发送的消息
 			if RoomsMsgFromBot(rooms, msg) || RoomsMsgBlocked(rooms, msg) {

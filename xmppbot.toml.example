@@ -4,7 +4,8 @@ password = ""
 resource = "bot"
 server = "jabber.org"
 port = 5222
-notls = true
+notls = false
+skip_verify = false #跳过ssl安全检查？
 session = false #如果不清楚，请设置为false
 
 [setup]
@@ -39,7 +40,10 @@ key = "xxxyyyy"
 enable = true
 chat = true
 room = true
-logger = "xmpplog.sqlite"
+dbtype = "sqlite3" #maybe sqlite3, mysql
+dbname = "xmpplog.sqlite"
+#dbpass = ""
+#dbuser = ""
 
 [plugin.url-helper]
 enable = true
