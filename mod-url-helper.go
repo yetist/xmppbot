@@ -66,7 +66,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"].(bool) {
-			if m.bot.SendThis(msg) {
+			if m.bot.SentThis(msg) {
 				return
 			}
 			text := m.GetHelper(msg.Text)
@@ -77,7 +77,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"].(bool) {
 			//忽略bot自己发送的消息
-			if m.bot.SendThis(msg) || m.bot.BlockRemote(msg) {
+			if m.bot.SentThis(msg) || m.bot.BlockRemote(msg) {
 				return
 			}
 			text := m.GetHelper(msg.Text)

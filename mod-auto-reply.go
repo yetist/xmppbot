@@ -74,11 +74,9 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
-	admin := m.bot.GetAdminPlugin()
-
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			if msg.Text == admin.GetCmdString("fuck") {
+			if msg.Text == m.bot.GetCmdString("fuck") {
 				m.bot.ReplyAuto(msg, m.FuckList[rand.Intn(len(m.FuckList))])
 			} else {
 				m.bot.ReplyAuto(msg, m.RandomList[rand.Intn(len(m.RandomList))])
@@ -86,12 +84,11 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
-			admin := m.bot.GetAdminPlugin()
 			//忽略bot自己发送的消息
-			if m.bot.SendThis(msg) || m.bot.BlockRemote(msg) {
+			if m.bot.SentThis(msg) || m.bot.BlockRemote(msg) {
 				return
 			}
-			if msg.Text == admin.GetCmdString("fuck") {
+			if msg.Text == m.bot.GetCmdString("fuck") {
 				roomid, nick := SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
@@ -107,11 +104,10 @@ func (m *AutoReply) Presence(pres xmpp.Presence) {
 }
 
 func (m *AutoReply) Help() string {
-	admin := m.bot.GetAdminPlugin()
 	msg := []string{
 		"AutoReply模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
 		"支持以下命令：",
-		admin.GetCmdString("fuck") + "   无聊透顶的命令，慎用",
+		m.bot.GetCmdString("fuck") + "   无聊透顶的命令，慎用",
 	}
 	return strings.Join(msg, "\n")
 }

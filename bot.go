@@ -37,6 +37,7 @@ func NewBot() (bot *Bot, err error) {
 	if client, err = NewClient(); err != nil {
 		return
 	}
+
 	return &Bot{
 		client: client,
 		cron:   cron.New(),
@@ -152,9 +153,9 @@ func (b *Bot) Restart() {
 }
 
 //获取管理员模块
-func (b *Bot) GetAdminPlugin() AdminInterface {
-	return b.admin
-}
+//func (b *Bot) GetAdminPlugin() AdminInterface {
+//	return b.admin
+//}
 
 //获取模块
 func (b *Bot) GetPluginByName(name string) BotInterface {
@@ -196,11 +197,6 @@ func (b *Bot) AddPlugin(name string) {
 			}
 		}
 	}
-}
-
-//TODO: delete the function
-func (b *Bot) GetClient() *xmpp.Client {
-	return b.client
 }
 
 func (b *Bot) JoinMUC(jid, nickname string) {
@@ -296,7 +292,7 @@ func (b *Bot) IsAdminID(jid string) bool {
 }
 
 // 消息是由bot自己发出的吗？
-func (b *Bot) SendThis(msg xmpp.Chat) bool {
+func (b *Bot) SentThis(msg xmpp.Chat) bool {
 
 	if msg.Type == "chat" {
 		if id, res := SplitJID(msg.Remote); id == config.Account.Username && res == config.Account.Resource {
@@ -339,4 +335,21 @@ func (b *Bot) Called(msg xmpp.Chat) (ok bool, text string) {
 		}
 	}
 	return false, msg.Text
+}
+
+func (b *Bot) SetRoomNick(r *Room, nick string) (n int, err error) {
+	msg := fmt.Sprintf("<presence from='%s/%s' to='%s/%s'/>",
+		config.Account.Username, config.Account.Resource, r.GetJID(), nick)
+	if n, err = b.client.SendOrg(msg); err == nil {
+		r.SetNick(nick)
+	}
+	return
+}
+
+func (b *Bot) GetCmdString(cmd string) string {
+	return b.admin.GetCmdString(cmd)
+}
+
+func (b *Bot) IsCmd(text string) bool {
+	return b.admin.IsCmd(text)
 }

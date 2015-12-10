@@ -298,12 +298,12 @@ func (m *Admin) room_nick(cmd string, msg xmpp.Chat) {
 	}
 	if tokens[1] == "all" {
 		for _, v := range m.Rooms {
-			v.SetNick(m.bot.GetClient(), tokens[2])
+			m.bot.SetRoomNick(v, tokens[2])
 		}
 	} else {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
-				v.SetNick(m.bot.GetClient(), tokens[2])
+				m.bot.SetRoomNick(v, tokens[2])
 			} else {
 				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}

@@ -58,9 +58,8 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 		return
 	}
 
-	admin := m.bot.GetAdminPlugin()
 	//忽略命令消息
-	if admin.IsCmd(msg.Text) {
+	if m.bot.IsCmd(msg.Text) {
 		return
 	}
 
@@ -71,7 +70,7 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
 			//忽略bot自己发送的消息
-			if m.bot.SendThis(msg) || m.bot.BlockRemote(msg) {
+			if m.bot.SentThis(msg) || m.bot.BlockRemote(msg) {
 				return
 			}
 			if ok, message := m.bot.Called(msg); ok {
