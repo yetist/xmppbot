@@ -17,13 +17,13 @@ status = "chat" # away, chat, dnd, xa.
 status_message = "我在线上"
 
 [[setup.rooms]]
-jid = "linuxcn@conference.jabber.org"
-nickname = "bot"
+jid = "gajim@conference.gajim.org"
+nickname = "water"
 #password = ""
 
 [[setup.rooms]]
-jid = "linuxcn@conference.jaim.org"
-nickname = "bot"
+jid = "test@conference.gajim.org"
+nickname = "snow"
 #password = ""
 
 ######## 插件配置项 ########
