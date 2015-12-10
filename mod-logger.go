@@ -5,6 +5,7 @@ import (
 	"github.com/go-xorm/xorm"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-xmpp"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -105,6 +106,10 @@ func (m *Logger) CheckEnv() bool {
 func (m *Logger) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
+	r := bot.GetRouter(m.GetName())
+	r.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello from"))
+	})
 }
 
 func (m *Logger) Stop() {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/jakecoffman/cron"
 	"github.com/mattn/go-xmpp"
 	"golang.org/x/net/html"
@@ -356,4 +357,13 @@ func (b *Bot) IsCmd(text string) bool {
 
 func (b *Bot) GetCron() *cron.Cron {
 	return b.cron
+}
+
+func (b *Bot) GetWeb() *WebServer {
+	return b.web
+}
+
+func (b *Bot) GetRouter(name string) *mux.Router {
+	mux := b.web.Dispatcher
+	return mux.PathPrefix("/" + name).Subrouter()
 }
