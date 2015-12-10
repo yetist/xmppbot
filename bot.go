@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
 	"github.com/jakecoffman/cron"
 	"github.com/mattn/go-xmpp"
 	"golang.org/x/net/html"
 	"log"
+	"net/http"
 	"strings"
 )
 
@@ -108,7 +108,6 @@ func (b *Bot) Run() {
 			}
 		}
 	}()
-	b.web.InitDispatch()
 	b.web.Start()
 }
 
@@ -217,15 +216,15 @@ func (b *Bot) Roster() error {
 }
 
 func (b *Bot) ApproveSubscription(jid string) {
-	b.ApproveSubscription(jid)
+	b.client.ApproveSubscription(jid)
 }
 
 func (b *Bot) RevokeSubscription(jid string) {
-	b.RevokeSubscription(jid)
+	b.client.RevokeSubscription(jid)
 }
 
 func (b *Bot) RequestSubscription(jid string) {
-	b.RequestSubscription(jid)
+	b.client.RequestSubscription(jid)
 }
 
 // 设置状态消息
@@ -359,11 +358,10 @@ func (b *Bot) GetCron() *cron.Cron {
 	return b.cron
 }
 
-func (b *Bot) GetWeb() *WebServer {
-	return b.web
+func (b *Bot) AddHandler(mod, path string, handler http.HandlerFunc, name string) {
+	b.web.Handler("/"+mod+path, handler, GetMd5(mod+path))
 }
 
-func (b *Bot) GetRouter(name string) *mux.Router {
-	mux := b.web.Dispatcher
-	return mux.PathPrefix("/" + name).Subrouter()
+func (b *Bot) DelHandler(mod, name string) {
+	b.web.Destroy(GetMd5(mod + name))
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-xorm/xorm"
+	//	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-xmpp"
 	"net/http"
@@ -91,9 +92,9 @@ func (m *Logger) CheckEnv() bool {
 		fmt.Printf("[%s] Database initial error, disable this plugin.\n", m.GetName())
 		return false
 	}
-	//m.x.ShowDebug = true
-	//m.x.ShowErr = true
-	//m.x.ShowSQL = true
+	m.x.ShowDebug = true
+	m.x.ShowErr = true
+	m.x.ShowSQL = true
 	m.x.SetMaxConns(10)
 
 	cacher := xorm.NewLRUCacher(xorm.NewMemoryStore(), 10000)
@@ -103,17 +104,68 @@ func (m *Logger) CheckEnv() bool {
 	return true
 }
 
+/* web pages */
+func (m *Logger) IndexPage(w http.ResponseWriter, r *http.Request) {
+	logs := make([]ChatLogger, 0)
+	if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
+		w.Write([]byte("no record"))
+	}
+	for _, v := range logs {
+		fmt.Printf("%#v\n", v.JID)
+	}
+	w.Write([]byte("index page."))
+}
+
+func (m *Logger) TextPage(w http.ResponseWriter, r *http.Request) {
+	/*
+		vars := mux.Vars(r)
+		jid := vars["jid"]
+		date := vars["date"]
+
+			err := m.x.Where("j_i_d = ?", jid).Limit(1).Desc("created").Find(&logs)
+			logs := make([]ChatLogger, 0)
+			if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
+				w.Write([]byte("no record"))
+			}
+			for _, v := range logs {
+				fmt.Printf("%#v\n", v.JID)
+			}
+	*/
+	w.Write([]byte("index page."))
+}
+
+func (m *Logger) HtmlPage(w http.ResponseWriter, r *http.Request) {
+	/*
+		vars := mux.Vars(r)
+		jid := vars["jid"]
+		date := vars["date"]
+
+			//name := vars["name"]
+			fmt.Printf("%#v\n%#v\n", r, vars)
+			logs := make([]ChatLogger, 0)
+			if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
+				w.Write([]byte("no record"))
+			}
+			for _, v := range logs {
+				fmt.Printf("%#v\n", v.JID)
+			}
+	*/
+	w.Write([]byte("index page."))
+}
+
 func (m *Logger) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
-	r := bot.GetRouter(m.GetName())
-	r.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello from"))
-	})
+	m.bot.AddHandler(m.GetName(), "/", m.IndexPage, "index")
+	m.bot.AddHandler(m.GetName(), "/{jid}/{date}.txt", m.TextPage, "text")
+	m.bot.AddHandler(m.GetName(), "/{jid}/{date}.html", m.HtmlPage, "html")
 }
 
 func (m *Logger) Stop() {
 	fmt.Printf("[%s] Stop\n", m.GetName())
+	m.bot.DelHandler(m.GetName(), "index")
+	m.bot.DelHandler(m.GetName(), "text")
+	m.bot.DelHandler(m.GetName(), "html")
 }
 
 func (m *Logger) Restart() {
