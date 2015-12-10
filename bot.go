@@ -353,3 +353,7 @@ func (b *Bot) GetCmdString(cmd string) string {
 func (b *Bot) IsCmd(text string) bool {
 	return b.admin.IsCmd(text)
 }
+
+func (b *Bot) GetCron() *cron.Cron {
+	return b.cron
+}

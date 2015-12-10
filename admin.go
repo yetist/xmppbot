@@ -13,14 +13,22 @@ type Admin struct {
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
+	crons     map[string]CronEntry
 }
 
 type AdminInterface interface {
 	GetRooms() []*Room
 	IsAdmin(jid string) bool
 	IsCmd(text string) bool
+	IsRoomID(jid string) bool
 	GetCmdString(cmd string) string
 	LoginTime() time.Time
+}
+
+type CronEntry struct {
+	spec string
+	to   string
+	text string
 }
 
 func NewAdmin(name string) *Admin {
@@ -36,6 +44,7 @@ func NewAdmin(name string) *Admin {
 	return &Admin{
 		Name:  name,
 		Rooms: rooms,
+		crons: map[string]CronEntry{},
 		Option: map[string]interface{}{
 			"cmd_prefix":     config.Setup.CmdPrefix,
 			"auto-subscribe": config.Setup.AutoSubscribe,
@@ -141,6 +150,9 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 	} else if strings.HasPrefix(msg.Text, m.GetCmdString("room")) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("room")):])
 		m.RoomCommand(cmd, msg)
+	} else if strings.HasPrefix(msg.Text, m.GetCmdString("cron")) {
+		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("cron")):])
+		m.CronCommand(cmd, msg)
 	} else if strings.HasPrefix(msg.Text, m.GetCmdString("sudo")) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("sudo")):])
 		m.AdminCommand(cmd, msg)
@@ -169,6 +181,7 @@ func (m *Admin) Help() string {
 		m.GetCmdString("help") + "    查看帮助命令详情",
 		m.GetCmdString("sudo") + "    查看管理员命令详情",
 		m.GetCmdString("room") + "    查看聊天室命令详情",
+		m.GetCmdString("cron") + "    查看计划任务命令详情",
 		m.GetCmdString("version") + " 查看Bot版本",
 	}
 	return strings.Join(text, "\n")
@@ -191,6 +204,16 @@ func (m *Admin) IsAdmin(jid string) bool {
 
 func (m *Admin) LoginTime() time.Time {
 	return m.loginTime.UTC()
+}
+
+// jid 是已进入的聊天室吗？
+func (m *Admin) IsRoomID(jid string) bool {
+	for _, v := range m.Rooms {
+		if v.JID == jid {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Admin) IsCmd(text string) bool {
@@ -376,6 +399,73 @@ func (m *Admin) room_unblock(cmd string, msg xmpp.Chat) {
 			} else {
 				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
 			}
+		}
+	}
+}
+
+/* cron 命令处理 */
+func (m *Admin) CronCommand(cmd string, msg xmpp.Chat) {
+	if cmd == "" || cmd == "help" {
+		m.cron_help(cmd, msg)
+	} else if cmd == "list" {
+		m.cron_list(cmd, msg)
+	} else if strings.HasPrefix(cmd, "add ") {
+		m.cron_add(cmd, msg)
+	} else if strings.HasPrefix(cmd, "del ") {
+		m.cron_del(cmd, msg)
+	} else {
+		m.bot.ReplyAuto(msg, "不支持的命令: "+cmd)
+	}
+}
+
+func (m *Admin) cron_help(cmd string, msg xmpp.Chat) {
+	help_msg := []string{"==计划任务命令==",
+		m.GetCmdString("cron") + " help                      显示本信息",
+		m.GetCmdString("cron") + " list                      列出所有的计划任务详情",
+		m.GetCmdString("cron") + " add <spec> <jid> <msg>    添加计划任务",
+		"    Spec format using 6 space-separated fields: Seconds Minutes Hours DayofMonth Month DayofWeek",
+		m.GetCmdString("cron") + " del <taskid>              删除计划任务",
+	}
+	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
+}
+
+func (m *Admin) cron_list(cmd string, msg xmpp.Chat) {
+	names := []string{"==所有计划任务列表=="}
+	for k, c := range m.crons {
+		names = append(names, fmt.Sprintf("TaskID:%s, cron:%s, to:%s, text:%s", k, c.spec, c.to, c.text))
+	}
+	m.bot.ReplyAuto(msg, strings.Join(names, "\n"))
+}
+
+func (m *Admin) cron_add(cmd string, msg xmpp.Chat) {
+	//add <spec6> <jid> <msg>
+	tokens := strings.SplitN(cmd, " ", 9)
+	if len(tokens) != 9 {
+		m.bot.ReplyAuto(msg, "添加新任务失败，请检查消息格式是否正确．")
+	}
+	cron := m.bot.GetCron()
+	to := tokens[7]
+	message := tokens[8]
+	spec := strings.Join(tokens[1:7], " ")
+	id := GetMd5(cmd)
+	if m.IsRoomID(to) {
+		cron.AddFunc(spec, func() { m.bot.SendPub(to, message) }, id)
+		m.crons[id] = CronEntry{spec: spec, to: to, text: message}
+	} else {
+		cron.AddFunc(spec, func() { m.bot.SendAuto(to, message) }, id)
+		m.crons[id] = CronEntry{spec: spec, to: to, text: message}
+	}
+}
+
+func (m *Admin) cron_del(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 2)
+	key := tokens[1]
+	cron := m.bot.GetCron()
+	for k, _ := range m.crons {
+		if key == k {
+			cron.RemoveJob(key)
+			delete(m.crons, key)
+			return
 		}
 	}
 }
