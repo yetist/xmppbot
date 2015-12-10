@@ -307,13 +307,13 @@ func (m *Admin) room_msg(cmd string, msg xmpp.Chat) {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
 				m.bot.SendPub(tokens[1], tokens[2])
-			} else {
-				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
+				return
 			}
 		}
 	}
 }
 
+// 修改bot在聊天室中的昵称．
 func (m *Admin) room_nick(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 3)
 	if len(tokens) != 3 {
@@ -327,8 +327,7 @@ func (m *Admin) room_nick(cmd string, msg xmpp.Chat) {
 		for _, v := range m.Rooms {
 			if v.JID == tokens[1] {
 				m.bot.SetRoomNick(v, tokens[2])
-			} else {
-				m.bot.ReplyAuto(msg, "Bot未进入此聊天室")
+				return
 			}
 		}
 	}

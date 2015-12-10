@@ -135,7 +135,7 @@ func (m *Logger) Presence(pres xmpp.Presence) {
 
 func (m *Logger) Help() string {
 	msg := []string{
-		"Logger模块为自动响应模块，当有好友或群聊消息时将自动记录",
+		"日志记录模块，当有好友或群聊消息时将自动记录日志．",
 	}
 	return strings.Join(msg, "\n")
 }
