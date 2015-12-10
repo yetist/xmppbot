@@ -432,7 +432,7 @@ func (m *Admin) cron_help(cmd string, msg xmpp.Chat) {
 func (m *Admin) cron_list(cmd string, msg xmpp.Chat) {
 	names := []string{"==所有计划任务列表=="}
 	for k, c := range m.crons {
-		names = append(names, fmt.Sprintf("TaskID:%s, cron:%s, to:%s, text:%s", k, c.spec, c.to, c.text))
+		names = append(names, fmt.Sprintf("TaskID: %s , [%s] => [%s] : %s", k, c.spec, c.to, c.text))
 	}
 	m.bot.ReplyAuto(msg, strings.Join(names, "\n"))
 }
