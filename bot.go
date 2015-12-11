@@ -359,7 +359,7 @@ func (b *Bot) GetCron() *cron.Cron {
 }
 
 func (b *Bot) AddHandler(mod, path string, handler http.HandlerFunc, name string) {
-	b.web.Handler("/"+mod+path, handler, GetMd5(mod+path))
+	b.web.Handler("/"+mod+path, handler, GetMd5(mod+name))
 }
 
 func (b *Bot) DelHandler(mod, name string) {

@@ -82,7 +82,6 @@ func (m *Logger) SelectAllText() ([]ChatLogger, error) {
 
 func (m *Logger) GetRoomLogs(jid string) ([]ChatLogger, error) {
 	logs := make([]ChatLogger, 0)
-	//err := x.Where("j_i_d = ?", jid).Where("direct = ?", 1).Limit(n).Desc("created").Find(&nets)
 	err := m.x.Where("j_i_d = ?", jid).Limit(1).Desc("created").Find(&logs)
 	return logs, err
 }
@@ -117,14 +116,9 @@ func (m *Logger) IndexPage(w http.ResponseWriter, r *http.Request) {
 		if v.IsRoom {
 			info = fmt.Sprintf("<p>chatroom: <a href='%s/'>%s</a></p>", v.JID, v.JID)
 			lst = append(lst, info)
-		} else {
-			info = fmt.Sprintf("<p>chat: <a href='%s/'>%s</a></p>", v.JID, v.JID)
 		}
-		//		if v.JID == "desktoprd@groups.isoft-linux.org" {
-		//			lst = append(lst, info)
-		//		}
 	}
-
+	//TODO: use html templates.
 	w.Write([]byte(strings.Join(lst, "\n")))
 }
 
@@ -133,47 +127,40 @@ func (m *Logger) JIDPage(w http.ResponseWriter, r *http.Request) {
 	jid := vars["jid"]
 	logs := make([]ChatLogger, 0)
 
-	//if err := m.x.Distinct("j_i_d").Cols("j_i_d", "is_room").Find(&logs); err != nil {
-	query := fmt.Sprintf("select distinct strftime('%%Y-%%m-%%d', created, 'localtime') from chat_logger where j_i_d = %s;", jid)
-	if result, err := m.x.Query(query); err != nil {
-		fmt.Printf("%#v\n", err)
-		w.Write([]byte("no record"))
-		return
-	} else {
-		fmt.Printf("%#v\n", result)
+	var lst []string
+	if err := m.x.Select("distinct strftime('%Y-%m-%d', created, 'localtime') as created").Where("j_i_d = ?", jid).Find(&logs); err == nil {
+		for _, v := range logs {
+			local := v.Created
+			date := local.Format("2006-01-02")
+			info := fmt.Sprintf("<p>%s: <a href='%s.txt'>Text</a> <a href='%s.html'>Html</a></p>", date, date, date)
+			lst = append(lst, info)
+		}
 	}
-	//	as created").Find(&logs); err != nil {
-	//"<a href=%s/desktoprd@groups.isoft-linux.org>日志</a>"))
-	//Distinct("j_i_d").Find(&logs); err != nil {
-	// select distinct strftime('%Y-%m-%d', created, 'localtime') from chat_logger;
-	//if err := m.x.Select("distinct strftime('%Y-%m-%d', created, 'localtime') as created").Find(&logs); err != nil {
-	//	w.Write([]byte("no record"))
-	//}
+	//TODO: use html templates.
+	w.Write([]byte(strings.Join(lst, "\n")))
 }
 
 func (m *Logger) ShowPage(w http.ResponseWriter, r *http.Request) {
-	//logs := make([]ChatLogger, 0)
-	//vars := mux.Vars(r)
-	//jid := vars["jid"]
-	//date := vars["date"]
-	//format := vars["format"]
-	//if jid != "desktoprd@groups.isoft-linux.org" {
-	//}
-
-	//if format == "txt" || format == "html" {
-	//}
-
-	//// select distinct strftime('%Y-%m-%d', created, 'localtime') from chat_logger;
-	////select created from chat_logger where strftime('%Y-%m-%d', created, 'localtime')=strftime('%Y-%m-%d', '2015-12-08');
-	//err := m.x.Where("j_i_d = ?", jid).Limit(1).Desc("created").Find(&logs)
-	//logs := make([]ChatLogger, 0)
-	//if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
-	//	w.Write([]byte("no record"))
-	//}
-	//for _, v := range logs {
-	//	fmt.Printf("%#v\n", v.JID)
-	//}
-	w.Write([]byte("index page."))
+	logs := make([]ChatLogger, 0)
+	vars := mux.Vars(r)
+	jid := vars["jid"]
+	date := vars["date"]
+	sql := fmt.Sprintf("select * from chat_logger where (j_i_d = '%s') and (strftime('%%Y-%%m-%%d', created)=strftime('%%Y-%%m-%%d', '%s'))", jid, date)
+	if err := m.x.Sql(sql).Desc("created").Find(&logs); err != nil {
+		w.Write([]byte("no record"))
+	} else {
+		var lst []string
+		for _, v := range logs {
+			var info string
+			if v.IsRoom {
+				info = fmt.Sprintf("[%s] %-8s: %s", v.Created.Format("2006-01-02 15:04:05"), v.Nick, v.Text)
+			} else {
+				info = fmt.Sprintf("[%s] %-8s: %s", v.Created.Format("2006-01-02 15:04:05"), v.Nick, v.Text)
+			}
+			lst = append(lst, info)
+		}
+		w.Write([]byte(strings.Join(lst, "\n")))
+	}
 }
 
 func (m *Logger) Start(bot *Bot) {
@@ -187,6 +174,7 @@ func (m *Logger) Start(bot *Bot) {
 func (m *Logger) Stop() {
 	fmt.Printf("[%s] Stop\n", m.GetName())
 	m.bot.DelHandler(m.GetName(), "index")
+	m.bot.DelHandler(m.GetName(), "jidpage")
 	m.bot.DelHandler(m.GetName(), "showlog")
 }
 
