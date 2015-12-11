@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-xorm/xorm"
-	//	"github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-xmpp"
 	"net/http"
@@ -107,49 +107,72 @@ func (m *Logger) CheckEnv() bool {
 /* web pages */
 func (m *Logger) IndexPage(w http.ResponseWriter, r *http.Request) {
 	logs := make([]ChatLogger, 0)
-	if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
+	if err := m.x.Distinct("j_i_d").Cols("j_i_d", "is_room").Find(&logs); err != nil {
 		w.Write([]byte("no record"))
+		return
 	}
+	var lst []string
 	for _, v := range logs {
-		fmt.Printf("%#v\n", v.JID)
+		var info string
+		if v.IsRoom {
+			info = fmt.Sprintf("<p>chatroom: <a href='%s/'>%s</a></p>", v.JID, v.JID)
+			lst = append(lst, info)
+		} else {
+			info = fmt.Sprintf("<p>chat: <a href='%s/'>%s</a></p>", v.JID, v.JID)
+		}
+		//		if v.JID == "desktoprd@groups.isoft-linux.org" {
+		//			lst = append(lst, info)
+		//		}
 	}
-	w.Write([]byte("index page."))
+
+	w.Write([]byte(strings.Join(lst, "\n")))
 }
 
-func (m *Logger) TextPage(w http.ResponseWriter, r *http.Request) {
-	/*
-		vars := mux.Vars(r)
-		jid := vars["jid"]
-		date := vars["date"]
+func (m *Logger) JIDPage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jid := vars["jid"]
+	logs := make([]ChatLogger, 0)
 
-			err := m.x.Where("j_i_d = ?", jid).Limit(1).Desc("created").Find(&logs)
-			logs := make([]ChatLogger, 0)
-			if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
-				w.Write([]byte("no record"))
-			}
-			for _, v := range logs {
-				fmt.Printf("%#v\n", v.JID)
-			}
-	*/
-	w.Write([]byte("index page."))
+	//if err := m.x.Distinct("j_i_d").Cols("j_i_d", "is_room").Find(&logs); err != nil {
+	query := fmt.Sprintf("select distinct strftime('%%Y-%%m-%%d', created, 'localtime') from chat_logger where j_i_d = %s;", jid)
+	if result, err := m.x.Query(query); err != nil {
+		fmt.Printf("%#v\n", err)
+		w.Write([]byte("no record"))
+		return
+	} else {
+		fmt.Printf("%#v\n", result)
+	}
+	//	as created").Find(&logs); err != nil {
+	//"<a href=%s/desktoprd@groups.isoft-linux.org>日志</a>"))
+	//Distinct("j_i_d").Find(&logs); err != nil {
+	// select distinct strftime('%Y-%m-%d', created, 'localtime') from chat_logger;
+	//if err := m.x.Select("distinct strftime('%Y-%m-%d', created, 'localtime') as created").Find(&logs); err != nil {
+	//	w.Write([]byte("no record"))
+	//}
 }
 
-func (m *Logger) HtmlPage(w http.ResponseWriter, r *http.Request) {
-	/*
-		vars := mux.Vars(r)
-		jid := vars["jid"]
-		date := vars["date"]
+func (m *Logger) ShowPage(w http.ResponseWriter, r *http.Request) {
+	//logs := make([]ChatLogger, 0)
+	//vars := mux.Vars(r)
+	//jid := vars["jid"]
+	//date := vars["date"]
+	//format := vars["format"]
+	//if jid != "desktoprd@groups.isoft-linux.org" {
+	//}
 
-			//name := vars["name"]
-			fmt.Printf("%#v\n%#v\n", r, vars)
-			logs := make([]ChatLogger, 0)
-			if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
-				w.Write([]byte("no record"))
-			}
-			for _, v := range logs {
-				fmt.Printf("%#v\n", v.JID)
-			}
-	*/
+	//if format == "txt" || format == "html" {
+	//}
+
+	//// select distinct strftime('%Y-%m-%d', created, 'localtime') from chat_logger;
+	////select created from chat_logger where strftime('%Y-%m-%d', created, 'localtime')=strftime('%Y-%m-%d', '2015-12-08');
+	//err := m.x.Where("j_i_d = ?", jid).Limit(1).Desc("created").Find(&logs)
+	//logs := make([]ChatLogger, 0)
+	//if err := m.x.Distinct("j_i_d").Find(&logs); err != nil {
+	//	w.Write([]byte("no record"))
+	//}
+	//for _, v := range logs {
+	//	fmt.Printf("%#v\n", v.JID)
+	//}
 	w.Write([]byte("index page."))
 }
 
@@ -157,15 +180,14 @@ func (m *Logger) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 	m.bot.AddHandler(m.GetName(), "/", m.IndexPage, "index")
-	m.bot.AddHandler(m.GetName(), "/{jid}/{date}.txt", m.TextPage, "text")
-	m.bot.AddHandler(m.GetName(), "/{jid}/{date}.html", m.HtmlPage, "html")
+	m.bot.AddHandler(m.GetName(), "/{jid}/", m.JIDPage, "jidpage")
+	m.bot.AddHandler(m.GetName(), "/{jid}/{date}.{format}", m.ShowPage, "showlog")
 }
 
 func (m *Logger) Stop() {
 	fmt.Printf("[%s] Stop\n", m.GetName())
 	m.bot.DelHandler(m.GetName(), "index")
-	m.bot.DelHandler(m.GetName(), "text")
-	m.bot.DelHandler(m.GetName(), "html")
+	m.bot.DelHandler(m.GetName(), "showlog")
 }
 
 func (m *Logger) Restart() {
