@@ -6,6 +6,7 @@ import (
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/core"
 	"github.com/yetist/xmppbot/utils"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -58,27 +59,43 @@ func (m *Notify) CheckEnv() bool {
 }
 
 /* web pages */
-func (m *Notify) IndexPage(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("indexpage"))
-}
-
 func (m *Notify) JIDPage(w http.ResponseWriter, r *http.Request) {
+	if !m.isIpAllowed(r) {
+		http.NotFound(w, r)
+		return
+	}
+	if username, password, ok := r.BasicAuth(); !ok {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"xmppbot\"")
+		http.Error(w, http.StatusText(401), 401)
+		return
+	} else if !(m.Option["authuser"] == username && m.Option["authpass"] == password) {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"xmppbot\"")
+		http.Error(w, http.StatusText(401), 401)
+		return
+	}
+
+	if strings.ToLower(r.Method) != "post" {
+		http.NotFound(w, r)
+		return
+	}
 	vars := mux.Vars(r)
 	jid := vars["jid"]
-	fmt.Printf("%#v\n", r)
-	w.Write([]byte("jidpage" + jid))
+	if m.bot.IsRoomID(jid) {
+		m.bot.SendPub(jid, fmt.Sprintf("通知：%s\n%s", r.FormValue("subject"), r.FormValue("body")))
+	} else {
+		m.bot.SendAuto(jid, fmt.Sprintf("通知：%s\n%s", r.FormValue("subject"), r.FormValue("body")))
+	}
+	w.Write([]byte("notify sent to " + jid + "\n"))
 }
 
 func (m *Notify) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
-	//m.bot.AddHandler(m.GetName(), "/", m.IndexPage, "index")
 	m.bot.AddHandler(m.GetName(), "/{jid}/", m.JIDPage, "jidpage")
 }
 
 func (m *Notify) Stop() {
 	fmt.Printf("[%s] Stop\n", m.GetName())
-	//m.bot.DelHandler(m.GetName(), "index")
 	m.bot.DelHandler(m.GetName(), "jidpage")
 }
 
@@ -137,10 +154,10 @@ func (m *Notify) ModCommand(cmd string, msg xmpp.Chat) {
 
 func (m *Notify) cmd_mod_help(cmd string, msg xmpp.Chat) {
 	help_msg := []string{"==通知转发命令==",
-		m.bot.GetCmdString(m.Name) + " help                      显示本信息",
-		m.bot.GetCmdString(m.Name) + " list-allows               列出允许访问的ip地址",
-		m.bot.GetCmdString(m.Name) + " add-allow <ip>            添加新的ip地址到可允许访问列表",
-		m.bot.GetCmdString(m.Name) + " del-allow <ip>            从允许访问列表中删除一个ip地址",
+		m.bot.GetCmdString(m.Name) + " help            显示本信息",
+		m.bot.GetCmdString(m.Name) + " list-allows     列出允许访问的ip地址",
+		m.bot.GetCmdString(m.Name) + " add-allow <ip>  添加新的ip地址到可允许访问列表",
+		m.bot.GetCmdString(m.Name) + " del-allow <ip>  从允许访问列表中删除一个ip地址",
 	}
 	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }
@@ -183,4 +200,33 @@ func (m *Notify) cmd_mod_del_allow(cmd string, msg xmpp.Chat) {
 	} else {
 		m.bot.ReplyAuto(msg, "ip地址 "+tokens[1]+" 不在列表中!")
 	}
+}
+
+func (m *Notify) isIpAllowed(r *http.Request) (authorized bool) {
+	var ip string
+	if ipProxy := r.Header.Get("X-Real-IP"); len(ipProxy) > 0 {
+		ip = ipProxy
+	} else if ipProxy := r.Header.Get("X-FORWARDED-FOR"); len(ipProxy) > 0 {
+		ip = ipProxy
+	} else {
+		ip, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+	rAddr := net.ParseIP(ip)
+	for v := range m.Allows {
+		_, ipNet, err := net.ParseCIDR(m.Allows[v])
+		if err != nil {
+			ipHost := net.ParseIP(m.Allows[v])
+			if ipHost != nil {
+				if ipHost.Equal(rAddr) {
+					authorized = true
+				}
+			}
+		} else {
+			if ipNet.Contains(rAddr) {
+				authorized = true
+			}
+		}
+	}
+	fmt.Printf("ip: %s, authorized: %v\n", ip, authorized)
+	return
 }
