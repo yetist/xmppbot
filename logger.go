@@ -100,9 +100,9 @@ func (m *Logger) CheckEnv() bool {
 		fmt.Printf("[%s] Database initial error, disable this plugin.\n", m.GetName())
 		return false
 	}
-	m.x.ShowDebug = true
-	m.x.ShowErr = true
-	m.x.ShowSQL = true
+	m.x.ShowDebug = false
+	m.x.ShowErr = false
+	m.x.ShowSQL = false
 	m.x.SetMaxConns(10)
 
 	cacher := xorm.NewLRUCacher(xorm.NewMemoryStore(), 10000)
