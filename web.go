@@ -8,12 +8,14 @@ import (
 
 type WebServer struct {
 	Dispatcher *mux.Router
+	Host       string
 	Urls       map[string]func(w http.ResponseWriter, r *http.Request)
 	Port       string
 }
 
-func NewWebServer(port int) *WebServer {
+func NewWebServer(host string, port int) *WebServer {
 	return &WebServer{
+		Host:       host,
 		Port:       strconv.Itoa(port),
 		Dispatcher: mux.NewRouter(),
 		Urls:       make(map[string]func(w http.ResponseWriter, r *http.Request)),
@@ -36,5 +38,5 @@ func (s *WebServer) Destroy(name string) {
 }
 
 func (s *WebServer) Start() {
-	http.ListenAndServe(":"+s.Port, s.Dispatcher)
+	http.ListenAndServe(s.Host+":"+s.Port, s.Dispatcher)
 }

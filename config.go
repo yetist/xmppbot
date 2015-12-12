@@ -11,14 +11,6 @@ import (
 	"strings"
 )
 
-const (
-	AppName    = "xmppbot"
-	AppVersion = "0.1"
-	AppConfig  = "xmppbot.toml"
-)
-
-var config Config
-
 type Config struct {
 	Account struct {
 		Username string
@@ -37,14 +29,64 @@ type Config struct {
 		CmdPrefix     string `toml:"cmd_prefix"`
 		Status        string
 		StatusMessage string `toml:"status_message"`
+		WebHost       string
+		WebPort       int
 		Rooms         []map[string]interface{}
 	}
 	Plugin map[string]map[string]interface{}
 }
 
-func init() {
-	LoadConfig(AppName, AppVersion, AppConfig)
+func (c *Config) GetWebHost() string {
+	return c.Setup.WebHost
 }
+
+func (c *Config) GetWebPort() int {
+	return c.Setup.WebPort
+}
+
+func (c *Config) GetPlugins() map[string]map[string]interface{} {
+	return c.Plugin
+}
+
+func (c *Config) GetUsername() string {
+	return c.Account.Username
+}
+
+func (c *Config) GetResource() string {
+	return c.Account.Resource
+}
+
+func (c *Config) GetServer() string {
+	return c.Account.Server
+}
+
+func (c *Config) GetAdmin() []string {
+	return c.Setup.Admin
+}
+
+func (c *Config) GetRooms() []map[string]interface{} {
+	return c.Setup.Rooms
+}
+
+func (c *Config) GetCmdPrefix() string {
+	return c.Setup.CmdPrefix
+}
+func (c *Config) GetAutoSubscribe() bool {
+	return c.Setup.AutoSubscribe
+}
+func (c *Config) GetStatus() string {
+	return c.Setup.Status
+}
+func (c *Config) GetStatusMessage() string {
+	return c.Setup.StatusMessage
+}
+func (c *Config) GetDebug() bool {
+	return c.Setup.Debug
+}
+
+//func init() {
+//	LoadConfig(AppName, AppVersion, AppConfig)
+//}
 
 func ExecPath() (string, error) {
 	file, err := exec.LookPath(os.Args[0])
@@ -131,7 +173,7 @@ func sysConfigDir(name, version string) (pth string) {
 	return pth
 }
 
-func LoadConfig(name, version, cfgname string) (err error) {
+func LoadConfig(name, version, cfgname string) (config Config, err error) {
 	sysconf := path.Join(sysConfigDir(name, version), cfgname)
 	userconf := path.Join(userConfigDir(name, version), cfgname)
 	selfconf := path.Join(selfConfigDir(), cfgname)
@@ -155,7 +197,7 @@ func LoadConfig(name, version, cfgname string) (err error) {
 	} else {
 		fmt.Printf("\n*** 无法找到配置文件，有效的配置文件路径列表为(按顺序查找)***\n\n1. %s\n2. %s\n3. %s\n", selfconf, userconf, sysconf)
 	}
-	return nil
+	return
 }
 
 func GetDataPath(datafile string) string {

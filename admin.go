@@ -16,7 +16,7 @@ type Admin struct {
 	crons     map[string]CronEntry
 }
 
-type AdminInterface interface {
+type AdminIface interface {
 	GetRooms() []*Room
 	IsAdmin(jid string) bool
 	IsCmd(text string) bool
@@ -31,9 +31,9 @@ type CronEntry struct {
 	text string
 }
 
-func NewAdmin(name string) *Admin {
+func NewAdmin(name string, config Config) *Admin {
 	var rooms []*Room
-	for _, i := range config.Setup.Rooms {
+	for _, i := range config.GetRooms() {
 		password := ""
 		if i["password"] != nil {
 			password = i["password"].(string)
@@ -46,9 +46,9 @@ func NewAdmin(name string) *Admin {
 		Rooms: rooms,
 		crons: map[string]CronEntry{},
 		Option: map[string]interface{}{
-			"cmd_prefix":     config.Setup.CmdPrefix,
-			"auto-subscribe": config.Setup.AutoSubscribe,
-			"admin":          config.Setup.Admin,
+			"cmd_prefix":     config.GetCmdPrefix(),
+			"auto-subscribe": config.GetAutoSubscribe(),
+			"admin":          config.GetAdmin(),
 		},
 	}
 }
@@ -117,13 +117,13 @@ func (m *Admin) Stop() {
 func (m *Admin) Restart() {
 	m.Stop()
 	LoadConfig(AppName, AppVersion, AppConfig)
-	m.Option["cmd_prefix"] = config.Setup.CmdPrefix
-	m.Option["auto-subscribe"] = config.Setup.AutoSubscribe
+	m.Option["cmd_prefix"] = config.GetCmdPrefix()
+	m.Option["auto-subscribe"] = config.GetAutoSubscribe()
 	m.bot.Roster()
-	m.bot.SetStatus(config.Setup.Status, config.Setup.StatusMessage)
+	m.bot.SetStatus(config.GetStatus(), config.GetStatusMessage())
 
 	var rooms []*Room
-	for _, i := range config.Setup.Rooms {
+	for _, i := range config.GetRooms() {
 		password := ""
 		if i["password"] != nil {
 			password = i["password"].(string)
@@ -160,7 +160,7 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 }
 
 func (m *Admin) Presence(pres xmpp.Presence) {
-	if config.Setup.Debug {
+	if config.GetDebug() {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
 	//处理订阅消息
@@ -194,7 +194,7 @@ func (m *Admin) GetRooms() []*Room {
 
 func (m *Admin) IsAdmin(jid string) bool {
 	u, _ := SplitJID(jid)
-	for _, admin := range config.Setup.Admin {
+	for _, admin := range config.GetAdmin() {
 		if u == admin {
 			return true
 		}
@@ -550,7 +550,7 @@ func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
 
 	names = append(names, m.Name+"[内置]")
 
-	for name, v := range config.Plugin {
+	for name, v := range config.GetPlugins() {
 		if v["enable"].(bool) {
 			names = append(names, name+"[启用]")
 		} else {

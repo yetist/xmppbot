@@ -90,15 +90,6 @@ func ListDelete(list []string, key string) []string {
 	return list
 }
 
-//func ChatMsgFromBot(msg xmpp.Chat) bool {
-//	if msg.Type == "chat" {
-//		if id, res := SplitJID(msg.Remote); id == config.Account.Username && res == config.Account.Resource {
-//			return true
-//		}
-//	}
-//	return false
-//}
-
 func HttpOpen(url string, n time.Duration) (res *http.Response, body []byte, err error) {
 	timeout := n * time.Second
 	failTime := timeout * 2
