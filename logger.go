@@ -47,7 +47,14 @@ func (m *Logger) GetName() string {
 }
 
 func (m *Logger) GetSummary() string {
-	return "记录聊天日志"
+	return "日志记录模块，自动记录聊天记录。"
+}
+
+func (m *Logger) Help() string {
+	msg := []string{
+		"日志记录模块，当有好友或群聊消息时将自动记录日志．",
+	}
+	return strings.Join(msg, "\n")
 }
 
 type ChatLogger struct {
@@ -199,13 +206,6 @@ func (m *Logger) Chat(msg xmpp.Chat) {
 }
 
 func (m *Logger) Presence(pres xmpp.Presence) {
-}
-
-func (m *Logger) Help() string {
-	msg := []string{
-		"日志记录模块，当有好友或群聊消息时将自动记录日志．",
-	}
-	return strings.Join(msg, "\n")
 }
 
 func (m *Logger) GetOptions() map[string]string {

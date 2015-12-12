@@ -52,7 +52,7 @@ func (m *UrlHelper) Stop() {
 }
 
 func (m *UrlHelper) Restart() {
-	opt := config.Plugin[m.GetName()]
+	opt := cfg.GetPlugin(m.GetName())
 	m.Option["chat"] = opt["chat"].(bool)
 	m.Option["room"] = opt["room"].(bool)
 	m.Option["timeout"] = opt["timeout"].(int64)

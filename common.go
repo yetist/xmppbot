@@ -11,6 +11,7 @@ import (
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
 	"image"
+	_ "image/gif"  //必须import，否则会出现：unknown format，其余类似
 	_ "image/jpeg" //必须import，否则会出现：unknown format，其余类似
 	"image/png"
 	"io/ioutil"
@@ -19,10 +20,14 @@ import (
 	"time"
 )
 
-func MapDelete(dict map[string]interface{}, key string) {
-	_, ok := dict[key]
-	if ok {
-		delete(dict, key)
+func MapDelete(d interface{}, key string) {
+	switch d.(type) {
+	case map[string]interface{}:
+		dict := d.(map[string]interface{})
+		_, ok := dict[key]
+		if ok {
+			delete(dict, key)
+		}
 	}
 }
 

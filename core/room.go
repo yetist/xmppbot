@@ -33,7 +33,7 @@ func (r *Room) BlockOne(nick string) {
 }
 
 func (r *Room) UnBlockOne(nick string) {
-	r.Block = ListDelete(r.Block, nick)
+	r.Block = strListDelete(r.Block, nick)
 }
 
 func (r *Room) IsBlocked(nick string) bool {

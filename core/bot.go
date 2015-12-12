@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jakecoffman/cron"
 	"github.com/mattn/go-xmpp"
+	"github.com/yetist/xmppbot/config"
 	"golang.org/x/net/html"
 	"log"
 	"net/http"
@@ -16,7 +17,7 @@ type Bot struct {
 	web          *WebServer
 	plugins      []BotIface
 	admin        AdminIface
-	config       Config
+	config       config.Config
 	createPlugin NewFunc
 }
 
@@ -34,7 +35,7 @@ type BotIface interface {
 	SetOption(key, val string)
 }
 
-func NewBot(client *xmpp.Client, config Config, f NewFunc) *Bot {
+func NewBot(client *xmpp.Client, config config.Config, f NewFunc) *Bot {
 	b := &Bot{
 		client:       client,
 		cron:         cron.New(),

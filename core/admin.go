@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"github.com/yetist/xmppbot/config"
 	"strings"
 	"time"
 )
@@ -10,7 +11,7 @@ import (
 type Admin struct {
 	Name      string
 	bot       *Bot
-	config    Config
+	config    config.Config
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
@@ -32,7 +33,7 @@ type CronEntry struct {
 	text string
 }
 
-func NewAdmin(name string, config Config) *Admin {
+func NewAdmin(name string, config config.Config) *Admin {
 	var rooms []*Room
 	for _, i := range config.GetRooms() {
 		password := ""
@@ -532,7 +533,7 @@ func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 		m.GetCmdString("sudo") + " add-admin <jid>  新增管理员帐号",
 		m.GetCmdString("sudo") + " del-admin <jid>  新增管理员帐号", "",
 
-		m.GetCmdString("sudo") + " list-options                列出所有模块可配置选项",
+		m.GetCmdString("sudo") + " list-options [Plugin]       列出所有模块可配置选项",
 		m.GetCmdString("sudo") + " set-option <field> <value>  设置模块相关选项", "",
 
 		m.GetCmdString("sudo") + " list-rooms                             列出机器人当前所在的聊天室",
@@ -641,7 +642,7 @@ func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	jid, _ := SplitJID(msg.Remote)
 	if m.bot.IsAdminID(tokens[1]) && tokens[1] != jid {
-		m.Option["admin"] = ListDelete(m.Option["admin"].([]string), tokens[1])
+		m.Option["admin"] = strListDelete(m.Option["admin"].([]string), tokens[1])
 		m.bot.SendAuto(tokens[1], jid+" 临时取消了您的管理员身份!")
 	} else {
 		m.bot.ReplyAuto(msg, "不能取消 "+tokens[1]+" 的管理员身份!")
@@ -649,20 +650,30 @@ func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 }
 
 func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 2)
 	options := map[string]string{}
-	for _, mod := range m.bot.GetPlugins() {
-		for k, v := range mod.GetOptions() {
-			options[mod.GetName()+"."+k] = v
+	var opt_list []string
+	if len(tokens) == 2 {
+		if mod := m.bot.GetPluginByName(tokens[1]); mod != nil {
+			opt_list = append(opt_list, "=="+mod.GetName()+"模块可配置选项==")
+			for k, v := range mod.GetOptions() {
+				options[mod.GetName()+"."+k] = v
+			}
+		}
+	} else {
+		opt_list = append(opt_list, "==所有模块可配置选项==")
+		for _, mod := range m.bot.GetPlugins() {
+			for k, v := range mod.GetOptions() {
+				options[mod.GetName()+"."+k] = v
+			}
 		}
 	}
-	keys := SortMapKeys(options)
 
-	var opt_list []string
+	keys := sortMapKeys(options)
 	for _, v := range keys {
 		opt_list = append(opt_list, fmt.Sprintf("%-20s : %s", v, options[v]))
 	}
-	txt := "==所有模块可配置选项==\n" + strings.Join(opt_list, "\n")
-	m.bot.ReplyAuto(msg, txt)
+	m.bot.ReplyAuto(msg, strings.Join(opt_list, "\n"))
 }
 
 func (m *Admin) admin_set_option(cmd string, msg xmpp.Chat) {

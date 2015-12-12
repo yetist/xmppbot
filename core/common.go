@@ -51,16 +51,16 @@ func BoolToString(val bool) string {
 	}
 }
 
-func SortMapKeys(dict map[string]string) []string {
-	keys := make([]string, 0, len(dict))
-	for key := range dict {
+func sortMapKeys(dict interface{}) []string {
+	keys := make([]string, 0, len(dict.(map[string]interface{})))
+	for key := range dict.(map[string]interface{}) {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	return keys
 }
 
-func ListDelete(list []string, key string) []string {
+func strListDelete(list []string, key string) []string {
 	for k, v := range list {
 		if v == key {
 			list = append(list[:k], list[k+1:]...)

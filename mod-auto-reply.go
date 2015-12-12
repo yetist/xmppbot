@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/core"
 	"io/ioutil"
 	"math/rand"
@@ -41,10 +42,10 @@ func (m *AutoReply) GetSummary() string {
 }
 
 func (m *AutoReply) CheckEnv() bool {
-	if core.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
+	if config.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
 		return false
 	}
-	if core.GetDataPath(AppName, AppVersion, m.Random) == "" {
+	if config.GetDataPath(AppName, AppVersion, m.Random) == "" {
 		return false
 	}
 	return true
@@ -55,11 +56,11 @@ func (m *AutoReply) Start(bot *core.Bot) {
 	m.bot = bot
 	rand.Seed(time.Now().Unix())
 
-	if data, err := ioutil.ReadFile(core.GetDataPath(AppName, AppVersion, m.Fuck)); err == nil {
+	if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Fuck)); err == nil {
 		m.FuckList = strings.Split(string(data), "\n")
 	}
 
-	if data, err := ioutil.ReadFile(core.GetDataPath(AppName, AppVersion, m.Random)); err == nil {
+	if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Random)); err == nil {
 		m.RandomList = strings.Split(string(data), "\n")
 	}
 }
