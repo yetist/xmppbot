@@ -5,13 +5,14 @@ import (
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/utils"
 	"io/ioutil"
 	"math/rand"
 	"strings"
 	"time"
 )
 
-type AutoReply struct {
+type Random struct {
 	Name       string
 	Fuck       string
 	Random     string
@@ -21,8 +22,8 @@ type AutoReply struct {
 	Option     map[string]bool
 }
 
-func NewAutoReply(name string, opt map[string]interface{}) *AutoReply {
-	return &AutoReply{
+func NewRandom(name string, opt map[string]interface{}) *Random {
+	return &Random{
 		Name:   name,
 		Fuck:   opt["fuck"].(string),
 		Random: opt["random"].(string),
@@ -33,15 +34,15 @@ func NewAutoReply(name string, opt map[string]interface{}) *AutoReply {
 	}
 }
 
-func (m *AutoReply) GetName() string {
+func (m *Random) GetName() string {
 	return m.Name
 }
 
-func (m *AutoReply) GetSummary() string {
+func (m *Random) GetSummary() string {
 	return "和Bot聊天时自动回复消息"
 }
 
-func (m *AutoReply) CheckEnv() bool {
+func (m *Random) CheckEnv() bool {
 	if config.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
 		return false
 	}
@@ -51,7 +52,7 @@ func (m *AutoReply) CheckEnv() bool {
 	return true
 }
 
-func (m *AutoReply) Start(bot *core.Bot) {
+func (m *Random) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 	rand.Seed(time.Now().Unix())
@@ -65,14 +66,14 @@ func (m *AutoReply) Start(bot *core.Bot) {
 	}
 }
 
-func (m *AutoReply) Stop() {
+func (m *Random) Stop() {
 	fmt.Printf("[%s] Stop\n", m.GetName())
 }
 
-func (m *AutoReply) Restart() {
+func (m *Random) Restart() {
 }
 
-func (m *AutoReply) Chat(msg xmpp.Chat) {
+func (m *Random) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
@@ -91,43 +92,43 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 				return
 			}
 			if msg.Text == m.bot.GetCmdString("fuck") {
-				roomid, nick := core.SplitJID(msg.Remote)
+				roomid, nick := utils.SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
 			if ok, _ := m.bot.Called(msg); ok {
-				roomid, _ := core.SplitJID(msg.Remote)
+				roomid, _ := utils.SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, m.RandomList[rand.Intn(len(m.RandomList))])
 			}
 		}
 	}
 }
 
-func (m *AutoReply) Presence(pres xmpp.Presence) {
+func (m *Random) Presence(pres xmpp.Presence) {
 }
 
-func (m *AutoReply) Help() string {
+func (m *Random) Help() string {
 	msg := []string{
-		"AutoReply模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
+		"Random模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
 		"支持以下命令：",
 		m.bot.GetCmdString("fuck") + "   无聊透顶的命令，慎用",
 	}
 	return strings.Join(msg, "\n")
 }
 
-func (m *AutoReply) GetOptions() map[string]string {
+func (m *Random) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = core.BoolToString(v) + "  #是否在好友间启用随机回复"
+			opts[k] = utils.BoolToString(v) + "  #是否在好友间启用随机回复"
 		} else if k == "room" {
-			opts[k] = core.BoolToString(v) + "  #是否在群聊时启用随机回复"
+			opts[k] = utils.BoolToString(v) + "  #是否在群聊时启用随机回复"
 		}
 	}
 	return opts
 }
 
-func (m *AutoReply) SetOption(key, val string) {
+func (m *Random) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
-		m.Option[key] = core.StringToBool(val)
+		m.Option[key] = utils.StringToBool(val)
 	}
 }

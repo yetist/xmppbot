@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/yetist/xmppbot/utils"
 	"strings"
 )
 
@@ -33,7 +34,7 @@ func (r *Room) BlockOne(nick string) {
 }
 
 func (r *Room) UnBlockOne(nick string) {
-	r.Block = strListDelete(r.Block, nick)
+	r.Block = utils.ListDelete(r.Block, nick)
 }
 
 func (r *Room) IsBlocked(nick string) bool {

@@ -5,6 +5,7 @@ import (
 	"github.com/bitly/go-simplejson"
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/utils"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -66,7 +67,7 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 
 	if msg.Type == "chat" {
 		if m.Option["chat"] {
-			m.bot.ReplyAuto(msg, m.GetAnswer(msg.Text, core.GetMd5(msg.Remote)))
+			m.bot.ReplyAuto(msg, m.GetAnswer(msg.Text, utils.GetMd5(msg.Remote)))
 		}
 	} else if msg.Type == "groupchat" {
 		if m.Option["room"] {
@@ -75,8 +76,8 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 				return
 			}
 			if ok, message := m.bot.Called(msg); ok {
-				roomid, _ := core.SplitJID(msg.Remote)
-				m.bot.SendPub(roomid, m.GetAnswer(message, core.GetMd5(msg.Remote)))
+				roomid, _ := utils.SplitJID(msg.Remote)
+				m.bot.SendPub(roomid, m.GetAnswer(message, utils.GetMd5(msg.Remote)))
 			}
 		}
 	}
@@ -96,9 +97,9 @@ func (m *Tuling) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = core.BoolToString(v) + "  #是否响应好友消息"
+			opts[k] = utils.BoolToString(v) + "  #是否响应好友消息"
 		} else if k == "room" {
-			opts[k] = core.BoolToString(v) + "  #是否响应群聊呼叫消息"
+			opts[k] = utils.BoolToString(v) + "  #是否响应群聊呼叫消息"
 		}
 	}
 	return opts
@@ -106,7 +107,7 @@ func (m *Tuling) GetOptions() map[string]string {
 
 func (m *Tuling) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
-		m.Option[key] = core.StringToBool(val)
+		m.Option[key] = utils.StringToBool(val)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
+	"github.com/yetist/xmppbot/utils"
 	"strings"
 	"time"
 )
@@ -20,7 +21,7 @@ type Admin struct {
 
 type AdminIface interface {
 	GetRooms() []*Room
-	IsAdmin(jid string) bool
+	//IsAdmin(jid string) bool
 	IsCmd(text string) bool
 	IsRoomID(jid string) bool
 	GetCmdString(cmd string) string
@@ -72,7 +73,7 @@ func (m *Admin) GetOptions() map[string]string {
 		case "cmd_prefix":
 			opts[k] = v.(string) + "  #命令前缀"
 		case "auto-subscribe":
-			opts[k] = BoolToString(v.(bool)) + "  #是否自动完成互加好友"
+			opts[k] = utils.BoolToString(v.(bool)) + "  #是否自动完成互加好友"
 		}
 	}
 	return opts
@@ -81,7 +82,7 @@ func (m *Admin) GetOptions() map[string]string {
 func (m *Admin) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
 		if key == "auto-subscribe" {
-			m.Option[key] = StringToBool(val)
+			m.Option[key] = utils.StringToBool(val)
 		} else if key == "admin" {
 			//TODO: 忽略对管理员列表的设置
 			return
@@ -195,6 +196,7 @@ func (m *Admin) GetRooms() []*Room {
 	return m.Rooms
 }
 
+/*
 func (m *Admin) IsAdmin(jid string) bool {
 	u, _ := SplitJID(jid)
 	for _, admin := range m.config.GetAdmin() {
@@ -204,6 +206,7 @@ func (m *Admin) IsAdmin(jid string) bool {
 	}
 	return false
 }
+*/
 
 func (m *Admin) LoginTime() time.Time {
 	return m.loginTime.UTC()
@@ -449,7 +452,7 @@ func (m *Admin) cron_add(cmd string, msg xmpp.Chat) {
 	to := tokens[7]
 	message := tokens[8]
 	spec := strings.Join(tokens[1:7], " ")
-	id := GetMd5(cmd)
+	id := utils.GetMd5(cmd)
 	if m.IsRoomID(to) {
 		cron.AddFunc(spec, func() { m.bot.SendPub(to, message) }, id)
 		m.crons[id] = CronEntry{spec: spec, to: to, text: message}
@@ -473,7 +476,7 @@ func (m *Admin) cron_del(cmd string, msg xmpp.Chat) {
 }
 
 func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
-	if !m.IsAdmin(msg.Remote) {
+	if !m.bot.IsAdminID(msg.Remote) {
 		m.bot.ReplyAuto(msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
 		return
 	}
@@ -501,7 +504,7 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 		m.admin_add_admin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "del-admin ") {
 		m.admin_del_admin(cmd, msg)
-	} else if cmd == "list-options" {
+	} else if strings.HasPrefix(cmd, "list-options") {
 		m.admin_list_options(cmd, msg)
 	} else if strings.HasPrefix(cmd, "set-option ") {
 		m.admin_set_option(cmd, msg)
@@ -593,7 +596,7 @@ func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
 	if len(tokens) == 3 {
 		info = tokens[2]
 	}
-	if IsValidStatus(tokens[1]) {
+	if utils.IsValidStatus(tokens[1]) {
 		m.bot.SetStatus(tokens[1], info)
 	} else {
 		m.bot.ReplyAuto(msg, "设置状态失败，有效的状态为: away, chat, dnd, xa.")
@@ -626,13 +629,13 @@ func (m *Admin) admin_list_admin(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		if m.IsAdmin(tokens[1]) {
+		if m.bot.IsAdminID(tokens[1]) {
 			m.bot.ReplyAuto(msg, tokens[1]+" 已是管理员用户，不需再次增加！")
 		} else {
 			m.bot.RequestSubscription(tokens[1])
 			m.Option["admin"] = append(m.Option["admin"].([]string), tokens[1])
 			m.bot.ReplyAuto(msg, "您已添加 "+tokens[1]+"为管理员!")
-			jid, _ := SplitJID(msg.Remote)
+			jid, _ := utils.SplitJID(msg.Remote)
 			m.bot.SendAuto(tokens[1], jid+" 临时添加您为管理员!")
 		}
 	}
@@ -640,9 +643,9 @@ func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 
 func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
-	jid, _ := SplitJID(msg.Remote)
+	jid, _ := utils.SplitJID(msg.Remote)
 	if m.bot.IsAdminID(tokens[1]) && tokens[1] != jid {
-		m.Option["admin"] = strListDelete(m.Option["admin"].([]string), tokens[1])
+		m.Option["admin"] = utils.ListDelete(m.Option["admin"].([]string), tokens[1])
 		m.bot.SendAuto(tokens[1], jid+" 临时取消了您的管理员身份!")
 	} else {
 		m.bot.ReplyAuto(msg, "不能取消 "+tokens[1]+" 的管理员身份!")
@@ -669,7 +672,7 @@ func (m *Admin) admin_list_options(cmd string, msg xmpp.Chat) {
 		}
 	}
 
-	keys := sortMapKeys(options)
+	keys := utils.SortMapKeys(options)
 	for _, v := range keys {
 		opt_list = append(opt_list, fmt.Sprintf("%-20s : %s", v, options[v]))
 	}

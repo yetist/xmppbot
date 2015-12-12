@@ -7,6 +7,7 @@ import (
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/utils"
 	"log"
 	"os"
 	"strconv"
@@ -74,7 +75,7 @@ func parseArgs() {
 			flag.Usage()
 		}
 	}
-	if !core.IsValidStatus(cfg.Setup.Status) {
+	if !utils.IsValidStatus(cfg.Setup.Status) {
 		fmt.Fprintf(os.Stderr, "invalid status setup, allowed are: away, chat, dnd, xa.\n")
 		os.Exit(1)
 	}
@@ -83,14 +84,16 @@ func parseArgs() {
 // 新增模块在这里注册
 func CreatePlugin(name string, opt map[string]interface{}) core.BotIface {
 	var plugin core.BotIface
-	if name == "auto-reply" {
-		plugin = NewAutoReply(name, opt)
-	} else if name == "url-helper" {
-		plugin = NewUrlHelper(name, opt)
+	if name == "random" {
+		plugin = NewRandom(name, opt)
+	} else if name == "url" {
+		plugin = NewUrl(name, opt)
 	} else if name == "tuling" {
 		plugin = NewTuling(name, opt)
 	} else if name == "logger" {
 		plugin = NewLogger(name, opt)
+	} else if name == "notify" {
+		plugin = NewNotify(name, opt)
 	}
 	return plugin
 }

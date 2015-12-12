@@ -5,6 +5,7 @@ import (
 	"github.com/jakecoffman/cron"
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
+	"github.com/yetist/xmppbot/utils"
 	"golang.org/x/net/html"
 	"log"
 	"net/http"
@@ -253,7 +254,7 @@ func (b *Bot) ReplyAuto(recv xmpp.Chat, text string) {
 // 回复好友消息，或聊天室公共消息
 func (b *Bot) ReplyPub(recv xmpp.Chat, text string) {
 	if recv.Type == "groupchat" {
-		roomid, _ := SplitJID(recv.Remote)
+		roomid, _ := utils.SplitJID(recv.Remote)
 		if strings.Contains(text, "<a href") || strings.Contains(text, "<img") {
 			b.SendHtml(xmpp.Chat{Remote: roomid, Type: recv.Type, Text: text})
 		} else {
@@ -283,9 +284,19 @@ func (b *Bot) SendPub(to, text string) {
 }
 
 func (b *Bot) IsAdminID(jid string) bool {
-	u, _ := SplitJID(jid)
+	u, _ := utils.SplitJID(jid)
 	for _, admin := range b.config.GetAdmin() {
 		if u == admin {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bot) IsRoomID(jid string) bool {
+	roomid, _ := utils.SplitJID(jid)
+	for _, v := range b.admin.GetRooms() {
+		if roomid == v.JID {
 			return true
 		}
 	}
@@ -296,7 +307,7 @@ func (b *Bot) IsAdminID(jid string) bool {
 func (b *Bot) SentThis(msg xmpp.Chat) bool {
 
 	if msg.Type == "chat" {
-		if id, res := SplitJID(msg.Remote); id == b.config.GetUsername() && res == b.config.GetResource() {
+		if id, res := utils.SplitJID(msg.Remote); id == b.config.GetUsername() && res == b.config.GetResource() {
 			return true
 		}
 	} else if msg.Type == "groupchat" {
@@ -313,7 +324,7 @@ func (b *Bot) SentThis(msg xmpp.Chat) bool {
 func (b *Bot) BlockRemote(msg xmpp.Chat) bool {
 	if msg.Type == "groupchat" {
 		for _, v := range b.admin.GetRooms() {
-			roomid, nick := SplitJID(msg.Remote)
+			roomid, nick := utils.SplitJID(msg.Remote)
 			if roomid == v.JID && v.IsBlocked(nick) {
 				return true
 			}
@@ -360,9 +371,9 @@ func (b *Bot) GetCron() *cron.Cron {
 }
 
 func (b *Bot) AddHandler(mod, path string, handler http.HandlerFunc, name string) {
-	b.web.Handler("/"+mod+path, handler, GetMd5(mod+name))
+	b.web.Handler("/"+mod+path, handler, utils.GetMd5(mod+name))
 }
 
 func (b *Bot) DelHandler(mod, name string) {
-	b.web.Destroy(GetMd5(mod + name))
+	b.web.Destroy(utils.GetMd5(mod + name))
 }

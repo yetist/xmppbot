@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/utils"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -11,14 +12,14 @@ import (
 	"time"
 )
 
-type UrlHelper struct {
+type Url struct {
 	Name   string
 	bot    *core.Bot
 	Option map[string]interface{}
 }
 
-func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
-	return &UrlHelper{
+func NewUrl(name string, opt map[string]interface{}) *Url {
+	return &Url{
 		Name: name,
 		Option: map[string]interface{}{
 			"chat":    opt["chat"].(bool),
@@ -30,28 +31,28 @@ func NewUrlHelper(name string, opt map[string]interface{}) *UrlHelper {
 	}
 }
 
-func (m *UrlHelper) GetName() string {
+func (m *Url) GetName() string {
 	return m.Name
 }
 
-func (m *UrlHelper) GetSummary() string {
+func (m *Url) GetSummary() string {
 	return "URL链接辅助功能"
 }
 
-func (m *UrlHelper) CheckEnv() bool {
+func (m *Url) CheckEnv() bool {
 	return true
 }
 
-func (m *UrlHelper) Start(bot *core.Bot) {
+func (m *Url) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 }
 
-func (m *UrlHelper) Stop() {
+func (m *Url) Stop() {
 	fmt.Printf("[%s] Stop\n", m.GetName())
 }
 
-func (m *UrlHelper) Restart() {
+func (m *Url) Restart() {
 	opt := cfg.GetPlugin(m.GetName())
 	m.Option["chat"] = opt["chat"].(bool)
 	m.Option["room"] = opt["room"].(bool)
@@ -60,7 +61,7 @@ func (m *UrlHelper) Restart() {
 	m.Option["height"] = 100
 }
 
-func (m *UrlHelper) Chat(msg xmpp.Chat) {
+func (m *Url) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
@@ -83,31 +84,31 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			}
 			text := m.GetHelper(msg.Text)
 			if text != "" {
-				roomid, nick := core.SplitJID(msg.Remote)
+				roomid, nick := utils.SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, fmt.Sprintf("<p>%s %s</p>", nick, text))
 			}
 		}
 	}
 }
 
-func (m *UrlHelper) GetHelper(text string) string {
+func (m *Url) GetHelper(text string) string {
 	if strings.Contains(text, "http://") || strings.Contains(text, "https://") {
 		for k, url := range GetUrls(text) {
 			if url != "" {
 				timeout := time.Duration(m.Option["timeout"].(int64))
-				res, body, err := HttpOpen(url, timeout)
+				res, body, err := utils.HttpOpen(url, timeout)
 				if err != nil || res.StatusCode != http.StatusOK {
 					return fmt.Sprintf("对不起，无法打开此<a href='%s'>链接</a>", url)
 				}
 				if strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
-					title := getUTF8HtmlTitle(string(body))
+					title := utils.GetUTF8HtmlTitle(string(body))
 					if title == "" {
 						return fmt.Sprintf("报歉，无法得到<a href='%s'>链接</a>标题", url)
 					} else {
 						return fmt.Sprintf("发链接了，标题是[<a href='%s'>%s</a>]", url, title)
 					}
 				} else if strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
-					img := getBase64Image(body, m.Option["width"].(int), m.Option["height"].(int))
+					img := utils.GetBase64Image(body, m.Option["width"].(int), m.Option["height"].(int))
 					return fmt.Sprintf("发<a href='%s'>图片</a>了:<br/><img alt='点击看大图' src='%s'/>", url, img)
 				} else {
 					println(k, url, "发了其它类型文件")
@@ -118,23 +119,23 @@ func (m *UrlHelper) GetHelper(text string) string {
 	return ""
 }
 
-func (m *UrlHelper) Presence(pres xmpp.Presence) {
+func (m *Url) Presence(pres xmpp.Presence) {
 }
 
-func (m *UrlHelper) Help() string {
+func (m *Url) Help() string {
 	msg := []string{
-		"UrlHelper模块自动为聊天消息提供url标题或显示图片缩略图。",
+		"Url模块自动为聊天消息提供url标题或显示图片缩略图。",
 	}
 	return strings.Join(msg, "\n")
 }
 
-func (m *UrlHelper) GetOptions() map[string]string {
+func (m *Url) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = core.BoolToString(v.(bool)) + "  #是否记录朋友发送的日志"
+			opts[k] = utils.BoolToString(v.(bool)) + "  #是否记录朋友发送的日志"
 		} else if k == "room" {
-			opts[k] = core.BoolToString(v.(bool)) + "  #是否记录群聊日志"
+			opts[k] = utils.BoolToString(v.(bool)) + "  #是否记录群聊日志"
 		} else if k == "timeout" {
 			opts[k] = strconv.FormatInt(v.(int64), 10) + "  #访问链接超时时间"
 		} else if k == "width" {
@@ -147,10 +148,10 @@ func (m *UrlHelper) GetOptions() map[string]string {
 
 }
 
-func (m *UrlHelper) SetOption(key, val string) {
+func (m *Url) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
 		if key == "chat" || key == "room" {
-			m.Option[key] = core.StringToBool(val)
+			m.Option[key] = utils.StringToBool(val)
 		} else if key == "timeout" {
 			if i, e := strconv.ParseInt(val, 10, 0); e == nil {
 				m.Option[key] = i

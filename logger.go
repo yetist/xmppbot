@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/utils"
 	"net/http"
 	"strings"
 	"time"
@@ -69,7 +70,7 @@ type ChatLogger struct {
 }
 
 func (m *Logger) LogInsert(msg xmpp.Chat) (err error) {
-	jid, nick := core.SplitJID(msg.Remote)
+	jid, nick := utils.SplitJID(msg.Remote)
 	log := &ChatLogger{JID: jid, Nick: nick, Text: msg.Text}
 
 	if strings.Contains(msg.Text, "<img") {
@@ -212,9 +213,9 @@ func (m *Logger) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = core.BoolToString(v) + "  #是否响应好友消息"
+			opts[k] = utils.BoolToString(v) + "  #是否响应好友消息"
 		} else if k == "room" {
-			opts[k] = core.BoolToString(v) + "  #是否响应群聊消息"
+			opts[k] = utils.BoolToString(v) + "  #是否响应群聊消息"
 		}
 	}
 	return opts
@@ -222,6 +223,6 @@ func (m *Logger) GetOptions() map[string]string {
 
 func (m *Logger) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
-		m.Option[key] = core.StringToBool(val)
+		m.Option[key] = utils.StringToBool(val)
 	}
 }
