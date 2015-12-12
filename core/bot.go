@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -11,12 +11,13 @@ import (
 )
 
 type Bot struct {
-	client  *xmpp.Client
-	cron    *cron.Cron
-	web     *WebServer
-	plugins []BotIface
-	admin   AdminIface
-	config  Config
+	client       *xmpp.Client
+	cron         *cron.Cron
+	web          *WebServer
+	plugins      []BotIface
+	admin        AdminIface
+	config       Config
+	createPlugin NewFunc
 }
 
 type BotIface interface {
@@ -35,10 +36,11 @@ type BotIface interface {
 
 func NewBot(client *xmpp.Client, config Config, f NewFunc) *Bot {
 	b := &Bot{
-		client: client,
-		cron:   cron.New(),
-		config: config,
-		web:    NewWebServer(config.GetWebHost(), config.GetWebPort()),
+		client:       client,
+		cron:         cron.New(),
+		config:       config,
+		web:          NewWebServer(config.GetWebHost(), config.GetWebPort()),
+		createPlugin: f,
 	}
 
 	// 自动启用内置插件
@@ -188,7 +190,7 @@ func (b *Bot) AddPlugin(name string) {
 	}
 	for n, v := range b.config.GetPlugins() {
 		if n == name && v["enable"].(bool) {
-			plugin := CreatePlugin(name, v)
+			plugin := b.createPlugin(name, v)
 			if plugin != nil && plugin.CheckEnv() { //模块运行环境是否满足
 				plugin.Start(b)
 				b.plugins = append(b.plugins, plugin)

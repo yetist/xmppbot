@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 type Admin struct {
 	Name      string
 	bot       *Bot
+	config    Config
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
@@ -42,9 +43,10 @@ func NewAdmin(name string, config Config) *Admin {
 		rooms = append(rooms, room)
 	}
 	return &Admin{
-		Name:  name,
-		Rooms: rooms,
-		crons: map[string]CronEntry{},
+		Name:   name,
+		Rooms:  rooms,
+		config: config,
+		crons:  map[string]CronEntry{},
 		Option: map[string]interface{}{
 			"cmd_prefix":     config.GetCmdPrefix(),
 			"auto-subscribe": config.GetAutoSubscribe(),
@@ -116,14 +118,14 @@ func (m *Admin) Stop() {
 
 func (m *Admin) Restart() {
 	m.Stop()
-	LoadConfig(AppName, AppVersion, AppConfig)
-	m.Option["cmd_prefix"] = config.GetCmdPrefix()
-	m.Option["auto-subscribe"] = config.GetAutoSubscribe()
+	//FIXME: LoadConfig(AppName, AppVersion, AppConfig)
+	m.Option["cmd_prefix"] = m.config.GetCmdPrefix()
+	m.Option["auto-subscribe"] = m.config.GetAutoSubscribe()
 	m.bot.Roster()
-	m.bot.SetStatus(config.GetStatus(), config.GetStatusMessage())
+	m.bot.SetStatus(m.config.GetStatus(), m.config.GetStatusMessage())
 
 	var rooms []*Room
-	for _, i := range config.GetRooms() {
+	for _, i := range m.config.GetRooms() {
 		password := ""
 		if i["password"] != nil {
 			password = i["password"].(string)
@@ -160,7 +162,7 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 }
 
 func (m *Admin) Presence(pres xmpp.Presence) {
-	if config.GetDebug() {
+	if m.config.GetDebug() {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
 	//处理订阅消息
@@ -194,7 +196,7 @@ func (m *Admin) GetRooms() []*Room {
 
 func (m *Admin) IsAdmin(jid string) bool {
 	u, _ := SplitJID(jid)
-	for _, admin := range config.GetAdmin() {
+	for _, admin := range m.config.GetAdmin() {
 		if u == admin {
 			return true
 		}
@@ -225,9 +227,9 @@ func (m *Admin) GetCmdString(cmd string) string {
 
 func (m *Admin) VersionCommand(cmd string, msg xmpp.Chat) {
 	//TODO: version
-	if cmd == "" || cmd == "help" {
-		m.bot.ReplyPub(msg, AppName+"-"+AppVersion)
-	}
+	//if cmd == "" || cmd == "help" {
+	//	m.bot.ReplyPub(msg, AppName+"-"+AppVersion)
+	//}
 }
 
 func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
@@ -550,7 +552,7 @@ func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
 
 	names = append(names, m.Name+"[内置]")
 
-	for name, v := range config.GetPlugins() {
+	for name, v := range m.config.GetPlugins() {
 		if v["enable"].(bool) {
 			names = append(names, name+"[启用]")
 		} else {

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"code.google.com/p/graphics-go/graphics"
-	"crypto/md5"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -14,80 +13,17 @@ import (
 	"image"
 	_ "image/jpeg" //必须import，否则会出现：unknown format，其余类似
 	"image/png"
-	"io"
 	"io/ioutil"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 )
-
-func SplitJID(jid string) (string, string) {
-	if strings.Contains(jid, "/") {
-		tokens := strings.SplitN(jid, "/", 2)
-		return tokens[0], tokens[1]
-	} else {
-		return jid, ""
-	}
-}
-
-func IsValidStatus(status string) bool {
-	switch status {
-	case
-		"away",
-		"chat",
-		"dnd",
-		"xa":
-		return true
-	}
-	return false
-}
-
-func StringToBool(val string) bool {
-	switch strings.ToLower(val) {
-	case
-		"1",
-		"true",
-		"t",
-		"y",
-		"yes",
-		"ok":
-		return true
-	}
-	return false
-}
-
-func BoolToString(val bool) string {
-	if val {
-		return "true"
-	} else {
-		return "false"
-	}
-}
 
 func MapDelete(dict map[string]interface{}, key string) {
 	_, ok := dict[key]
 	if ok {
 		delete(dict, key)
 	}
-}
-
-func SortMapKeys(dict map[string]string) []string {
-	keys := make([]string, 0, len(dict))
-	for key := range dict {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func ListDelete(list []string, key string) []string {
-	for k, v := range list {
-		if v == key {
-			list = append(list[:k], list[k+1:]...)
-		}
-	}
-	return list
 }
 
 func HttpOpen(url string, n time.Duration) (res *http.Response, body []byte, err error) {
@@ -199,10 +135,4 @@ func getBase64Image(body []byte, width, height int) string {
 	encBuf := make([]byte, maxEncLen)
 	e64.Encode(encBuf, buf.Bytes())
 	return fmt.Sprintf("data:image/png;base64,%s", string(encBuf))
-}
-
-func GetMd5(str string) string {
-	h := md5.New()
-	io.WriteString(h, str)
-	return fmt.Sprintf("%x", h.Sum(nil))
 }

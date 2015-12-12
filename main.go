@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"github.com/yetist/xmppbot/core"
 	"log"
 	"os"
 	"strconv"
@@ -16,10 +17,10 @@ const (
 	AppConfig  = "xmppbot.toml"
 )
 
-var config Config
+var config core.Config
 
 func init() {
-	config, _ = LoadConfig(AppName, AppVersion, AppConfig)
+	config, _ = core.LoadConfig(AppName, AppVersion, AppConfig)
 	flag.StringVar(&config.Account.Username, "username", config.Account.Username, "username")
 	flag.StringVar(&config.Account.Password, "password", config.Account.Password, "password")
 	flag.StringVar(&config.Account.Resource, "resource", config.Account.Resource, "resource")
@@ -72,15 +73,15 @@ func parseArgs() {
 			flag.Usage()
 		}
 	}
-	if !IsValidStatus(config.Setup.Status) {
+	if !core.IsValidStatus(config.Setup.Status) {
 		fmt.Fprintf(os.Stderr, "invalid status setup, allowed are: away, chat, dnd, xa.\n")
 		os.Exit(1)
 	}
 }
 
 // 新增模块在这里注册
-func CreatePlugin(name string, opt map[string]interface{}) BotIface {
-	var plugin BotIface
+func CreatePlugin(name string, opt map[string]interface{}) core.BotIface {
+	var plugin core.BotIface
 	if name == "auto-reply" {
 		plugin = NewAutoReply(name, opt)
 	} else if name == "url-helper" {
@@ -102,7 +103,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	bot := NewBot(client, config, CreatePlugin)
+	bot := core.NewBot(client, config, CreatePlugin)
 	//bot.Init()
 	bot.Start()
 	bot.Run()

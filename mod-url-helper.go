@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"github.com/yetist/xmppbot/core"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 
 type UrlHelper struct {
 	Name   string
-	bot    *Bot
+	bot    *core.Bot
 	Option map[string]interface{}
 }
 
@@ -41,7 +42,7 @@ func (m *UrlHelper) CheckEnv() bool {
 	return true
 }
 
-func (m *UrlHelper) Start(bot *Bot) {
+func (m *UrlHelper) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 }
@@ -82,7 +83,7 @@ func (m *UrlHelper) Chat(msg xmpp.Chat) {
 			}
 			text := m.GetHelper(msg.Text)
 			if text != "" {
-				roomid, nick := SplitJID(msg.Remote)
+				roomid, nick := core.SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, fmt.Sprintf("<p>%s %s</p>", nick, text))
 			}
 		}
@@ -131,9 +132,9 @@ func (m *UrlHelper) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = BoolToString(v.(bool)) + "  #是否记录朋友发送的日志"
+			opts[k] = core.BoolToString(v.(bool)) + "  #是否记录朋友发送的日志"
 		} else if k == "room" {
-			opts[k] = BoolToString(v.(bool)) + "  #是否记录群聊日志"
+			opts[k] = core.BoolToString(v.(bool)) + "  #是否记录群聊日志"
 		} else if k == "timeout" {
 			opts[k] = strconv.FormatInt(v.(int64), 10) + "  #访问链接超时时间"
 		} else if k == "width" {
@@ -149,7 +150,7 @@ func (m *UrlHelper) GetOptions() map[string]string {
 func (m *UrlHelper) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
 		if key == "chat" || key == "room" {
-			m.Option[key] = StringToBool(val)
+			m.Option[key] = core.StringToBool(val)
 		} else if key == "timeout" {
 			if i, e := strconv.ParseInt(val, 10, 0); e == nil {
 				m.Option[key] = i

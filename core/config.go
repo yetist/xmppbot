@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -200,9 +200,9 @@ func LoadConfig(name, version, cfgname string) (config Config, err error) {
 	return
 }
 
-func GetDataPath(datafile string) string {
-	syspath := path.Join(sysConfigDir(AppName, AppVersion), "data", datafile)
-	userpath := path.Join(userConfigDir(AppName, AppVersion), "data", datafile)
+func GetDataPath(name, version, datafile string) string {
+	syspath := path.Join(sysConfigDir(name, version), "data", datafile)
+	userpath := path.Join(userConfigDir(name, version), "data", datafile)
 	selfpath := path.Join(selfConfigDir(), "data", datafile)
 	cwdpath := path.Join(cwdDir(), "data", datafile)
 	if IsFile(cwdpath) {

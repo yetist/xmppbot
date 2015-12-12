@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
+	"github.com/yetist/xmppbot/core"
 	"io/ioutil"
 	"math/rand"
 	"strings"
@@ -15,7 +16,7 @@ type AutoReply struct {
 	Random     string
 	FuckList   []string
 	RandomList []string
-	bot        *Bot
+	bot        *core.Bot
 	Option     map[string]bool
 }
 
@@ -40,25 +41,25 @@ func (m *AutoReply) GetSummary() string {
 }
 
 func (m *AutoReply) CheckEnv() bool {
-	if GetDataPath(m.Fuck) == "" {
+	if core.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
 		return false
 	}
-	if GetDataPath(m.Random) == "" {
+	if core.GetDataPath(AppName, AppVersion, m.Random) == "" {
 		return false
 	}
 	return true
 }
 
-func (m *AutoReply) Start(bot *Bot) {
+func (m *AutoReply) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 	rand.Seed(time.Now().Unix())
 
-	if data, err := ioutil.ReadFile(GetDataPath(m.Fuck)); err == nil {
+	if data, err := ioutil.ReadFile(core.GetDataPath(AppName, AppVersion, m.Fuck)); err == nil {
 		m.FuckList = strings.Split(string(data), "\n")
 	}
 
-	if data, err := ioutil.ReadFile(GetDataPath(m.Random)); err == nil {
+	if data, err := ioutil.ReadFile(core.GetDataPath(AppName, AppVersion, m.Random)); err == nil {
 		m.RandomList = strings.Split(string(data), "\n")
 	}
 }
@@ -89,11 +90,11 @@ func (m *AutoReply) Chat(msg xmpp.Chat) {
 				return
 			}
 			if msg.Text == m.bot.GetCmdString("fuck") {
-				roomid, nick := SplitJID(msg.Remote)
+				roomid, nick := core.SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, nick+": "+m.FuckList[rand.Intn(len(m.FuckList))])
 			}
 			if ok, _ := m.bot.Called(msg); ok {
-				roomid, _ := SplitJID(msg.Remote)
+				roomid, _ := core.SplitJID(msg.Remote)
 				m.bot.SendPub(roomid, m.RandomList[rand.Intn(len(m.RandomList))])
 			}
 		}
@@ -116,9 +117,9 @@ func (m *AutoReply) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = BoolToString(v) + "  #是否在好友间启用随机回复"
+			opts[k] = core.BoolToString(v) + "  #是否在好友间启用随机回复"
 		} else if k == "room" {
-			opts[k] = BoolToString(v) + "  #是否在群聊时启用随机回复"
+			opts[k] = core.BoolToString(v) + "  #是否在群聊时启用随机回复"
 		}
 	}
 	return opts
@@ -126,6 +127,6 @@ func (m *AutoReply) GetOptions() map[string]string {
 
 func (m *AutoReply) SetOption(key, val string) {
 	if _, ok := m.Option[key]; ok {
-		m.Option[key] = StringToBool(val)
+		m.Option[key] = core.StringToBool(val)
 	}
 }
