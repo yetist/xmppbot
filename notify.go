@@ -38,18 +38,28 @@ func (m *Notify) GetName() string {
 }
 
 func (m *Notify) GetSummary() string {
-	return "通知转发模块，自动转发通过http协议接收到的消息。"
-}
-
-func (m *Notify) Description() string {
-	return "通知转发模块，可将通过http协议接收到的消息转发给好友或聊天室。"
+	return "通知转发模块"
 }
 
 func (m *Notify) Help() string {
 	msg := []string{
-		"通知转发模块，可将通过http协议接收到的消息转发给好友或聊天室．",
-		"支持以下命令:",
+		m.GetSummary() + ": 可将通过http协议接收到的消息转发给好友或聊天室．支持命令:",
 		m.bot.GetCmdString(m.GetName()) + "    通知模块命令",
+	}
+	return strings.Join(msg, "\n")
+}
+
+func (m *Notify) Description() string {
+	msg := []string{m.Help(),
+		"本模块启用时，将提供web服务来接收通知，并根据相关信息将通知转发到合适的好友或聊天室。",
+		"通知消息的接收网址为http://your-host-name/" + m.GetName() + "/<JID>/",
+		"需要使用POST模式向此网址发送消息，定义参数subject和body，如果ip地址被允许，消息将会发给JID用户。",
+		"本模块可配置属性:",
+	}
+	options := m.GetOptions()
+	keys := utils.SortMapKeys(options)
+	for _, v := range keys {
+		msg = append(msg, fmt.Sprintf("%-20s : %s", v, options[v]))
 	}
 	return strings.Join(msg, "\n")
 }
@@ -204,6 +214,9 @@ func (m *Notify) cmd_mod_del_allow(cmd string, msg xmpp.Chat) {
 
 func (m *Notify) isIpAllowed(r *http.Request) (authorized bool) {
 	var ip string
+	if len(m.Allows) == 0 {
+		return true
+	}
 	if ipProxy := r.Header.Get("X-Real-IP"); len(ipProxy) > 0 {
 		ip = ipProxy
 	} else if ipProxy := r.Header.Get("X-FORWARDED-FOR"); len(ipProxy) > 0 {

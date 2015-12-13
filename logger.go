@@ -48,12 +48,27 @@ func (m *Logger) GetName() string {
 }
 
 func (m *Logger) GetSummary() string {
-	return "日志记录模块，自动记录聊天记录。"
+	return "日志记录模块"
 }
 
 func (m *Logger) Help() string {
 	msg := []string{
-		"日志记录模块，当有好友或群聊消息时将自动记录日志．",
+		m.GetSummary() + ": 当有好友或群聊消息时将自动记录日志．",
+	}
+	return strings.Join(msg, "\n")
+}
+
+func (m *Logger) Description() string {
+	msg := []string{m.Help(),
+		"当有好友或群聊消息时将自动记录日志．对好友消息，将只记录好友发出的消息，不记录bot回应的消息，对群聊消息将全部记录。",
+		"在本模块启用时，将同时提供一个web服务来查询所有历史聊天记录。",
+		"历史记录的网址为 http://your-host-name/" + m.GetName() + "/",
+		"本模块可配置属性:",
+	}
+	options := m.GetOptions()
+	keys := utils.SortMapKeys(options)
+	for _, v := range keys {
+		msg = append(msg, fmt.Sprintf("%-20s : %s", v, options[v]))
 	}
 	return strings.Join(msg, "\n")
 }

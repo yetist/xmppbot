@@ -36,7 +36,27 @@ func (m *Url) GetName() string {
 }
 
 func (m *Url) GetSummary() string {
-	return "URL链接辅助功能"
+	return "URL链接辅助模块"
+}
+
+func (m *Url) Help() string {
+	msg := []string{
+		m.GetSummary() + ": 可以自动为聊天消息提供url标题或显示图片缩略图。",
+	}
+	return strings.Join(msg, "\n")
+}
+
+func (m *Url) Description() string {
+	msg := []string{m.Help(),
+		"当用户在聊天过程中输入url时，机器人将自动去打开此url，并显示网页标题(html类型)或者显示一个缩略图(image类型).",
+		"本模块可配置属性:",
+	}
+	options := m.GetOptions()
+	keys := utils.SortMapKeys(options)
+	for _, v := range keys {
+		msg = append(msg, fmt.Sprintf("%-20s : %s", v, options[v]))
+	}
+	return strings.Join(msg, "\n")
 }
 
 func (m *Url) CheckEnv() bool {
@@ -96,7 +116,7 @@ func (m *Url) GetHelper(text string) string {
 		for k, url := range GetUrls(text) {
 			if url != "" {
 				timeout := time.Duration(m.Option["timeout"].(int64))
-				res, body, err := utils.HttpOpen(url, timeout)
+				res, body, err := utils.HttpOpen(url, timeout, "")
 				if err != nil || res.StatusCode != http.StatusOK {
 					return fmt.Sprintf("对不起，无法打开此<a href='%s'>链接</a>", url)
 				}
@@ -122,20 +142,13 @@ func (m *Url) GetHelper(text string) string {
 func (m *Url) Presence(pres xmpp.Presence) {
 }
 
-func (m *Url) Help() string {
-	msg := []string{
-		"Url模块自动为聊天消息提供url标题或显示图片缩略图。",
-	}
-	return strings.Join(msg, "\n")
-}
-
 func (m *Url) GetOptions() map[string]string {
 	opts := map[string]string{}
 	for k, v := range m.Option {
 		if k == "chat" {
-			opts[k] = utils.BoolToString(v.(bool)) + "  #是否记录朋友发送的日志"
+			opts[k] = utils.BoolToString(v.(bool)) + "  #是否响应好友消息"
 		} else if k == "room" {
-			opts[k] = utils.BoolToString(v.(bool)) + "  #是否记录群聊日志"
+			opts[k] = utils.BoolToString(v.(bool)) + "  #是否响应群聊消息"
 		} else if k == "timeout" {
 			opts[k] = strconv.FormatInt(v.(int64), 10) + "  #访问链接超时时间"
 		} else if k == "width" {

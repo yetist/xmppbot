@@ -36,7 +36,26 @@ func (m *Tuling) GetName() string {
 }
 
 func (m *Tuling) GetSummary() string {
-	return "图灵机器人插件"
+	return "图灵机器人模块"
+}
+
+func (m *Tuling) Help() string {
+	msg := []string{
+		m.GetSummary() + ": 在和Bot聊天及群聊时提到Bot时自动响应．",
+	}
+	return strings.Join(msg, "\n")
+}
+
+func (m *Tuling) Description() string {
+	msg := []string{m.Help(),
+		"本模块可配置属性:",
+	}
+	options := m.GetOptions()
+	keys := utils.SortMapKeys(options)
+	for _, v := range keys {
+		msg = append(msg, fmt.Sprintf("%-20s : %s", v, options[v]))
+	}
+	return strings.Join(msg, "\n")
 }
 
 func (m *Tuling) CheckEnv() bool {
@@ -84,13 +103,6 @@ func (m *Tuling) Chat(msg xmpp.Chat) {
 }
 
 func (m *Tuling) Presence(pres xmpp.Presence) {
-}
-
-func (m *Tuling) Help() string {
-	msg := []string{
-		"图灵机器人模块，在和Bot聊天及群聊时提到Bot时自动响应．",
-	}
-	return strings.Join(msg, "\n")
 }
 
 func (m *Tuling) GetOptions() map[string]string {

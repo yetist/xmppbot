@@ -92,7 +92,6 @@ func (b *Bot) Start() {
 	// 每分钟运行ping
 	b.cron.AddFunc("* */1 * * * ?", func() { b.client.PingC2S(b.config.GetUsername(), b.config.GetServer()) }, "xmpp ping")
 	b.cron.Start()
-
 }
 
 func (b *Bot) Run() {
@@ -153,11 +152,6 @@ func (b *Bot) Restart() {
 		b.AddPlugin(n) //FIXME:
 	}
 }
-
-//获取管理员模块
-//func (b *Bot) GetAdminPlugin() AdminInterface {
-//	return b.admin
-//}
 
 //获取模块
 func (b *Bot) GetPluginByName(name string) BotIface {
@@ -284,13 +278,7 @@ func (b *Bot) SendPub(to, text string) {
 }
 
 func (b *Bot) IsAdminID(jid string) bool {
-	u, _ := utils.SplitJID(jid)
-	for _, admin := range b.config.GetAdmin() {
-		if u == admin {
-			return true
-		}
-	}
-	return false
+	return b.admin.IsAdminID(jid)
 }
 
 func (b *Bot) IsRoomID(jid string) bool {

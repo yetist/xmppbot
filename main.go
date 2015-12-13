@@ -94,6 +94,8 @@ func CreatePlugin(name string, opt map[string]interface{}) core.BotIface {
 		plugin = NewLogger(name, opt)
 	} else if name == "notify" {
 		plugin = NewNotify(name, opt)
+	} else if name == "about" {
+		plugin = NewAbout(name, opt)
 	}
 	return plugin
 }

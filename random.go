@@ -42,6 +42,27 @@ func (m *Random) GetSummary() string {
 	return "和Bot聊天时自动回复消息"
 }
 
+func (m *Random) Help() string {
+	msg := []string{
+		"Random模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
+		"支持以下命令：",
+		m.bot.GetCmdString("fuck") + "   无聊透顶的命令，慎用",
+	}
+	return strings.Join(msg, "\n")
+}
+
+func (m *Random) Description() string {
+	msg := []string{m.Help(),
+		"本模块可配置属性:",
+	}
+	options := m.GetOptions()
+	keys := utils.SortMapKeys(options)
+	for _, v := range keys {
+		msg = append(msg, fmt.Sprintf("%-20s : %s", v, options[v]))
+	}
+	return strings.Join(msg, "\n")
+}
+
 func (m *Random) CheckEnv() bool {
 	if config.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
 		return false
@@ -104,15 +125,6 @@ func (m *Random) Chat(msg xmpp.Chat) {
 }
 
 func (m *Random) Presence(pres xmpp.Presence) {
-}
-
-func (m *Random) Help() string {
-	msg := []string{
-		"Random模块为自动应答模块，在以下情况下触发：和Bot聊天、在群聊时提到Bot",
-		"支持以下命令：",
-		m.bot.GetCmdString("fuck") + "   无聊透顶的命令，慎用",
-	}
-	return strings.Join(msg, "\n")
 }
 
 func (m *Random) GetOptions() map[string]string {

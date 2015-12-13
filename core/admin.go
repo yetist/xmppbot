@@ -21,7 +21,7 @@ type Admin struct {
 
 type AdminIface interface {
 	GetRooms() []*Room
-	//IsAdmin(jid string) bool
+	IsAdminID(jid string) bool
 	IsCmd(text string) bool
 	IsRoomID(jid string) bool
 	GetCmdString(cmd string) string
@@ -120,7 +120,6 @@ func (m *Admin) Stop() {
 
 func (m *Admin) Restart() {
 	m.Stop()
-	//FIXME: LoadConfig(AppName, AppVersion, AppConfig)
 	m.Option["cmd_prefix"] = m.config.GetCmdPrefix()
 	m.Option["auto-subscribe"] = m.config.GetAutoSubscribe()
 	m.bot.Roster()
@@ -145,10 +144,7 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 	}
 
 	// 仅处理好友消息
-	if msg.Text == m.GetCmdString("version") {
-		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("version")):])
-		m.VersionCommand(cmd, msg)
-	} else if strings.HasPrefix(msg.Text, m.GetCmdString("help")) {
+	if strings.HasPrefix(msg.Text, m.GetCmdString("help")) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("help")):])
 		m.HelpCommand(cmd, msg)
 	} else if strings.HasPrefix(msg.Text, m.GetCmdString("room")) {
@@ -180,13 +176,11 @@ func (m *Admin) Presence(pres xmpp.Presence) {
 
 func (m *Admin) Help() string {
 	text := []string{
-		"管理员模块为内置模块，提供了管理命令，用来设置及改变Bot的行为。",
-		"支持以下命令：",
+		"管理员模块为内置模块，提供了管理命令，用来设置及改变Bot的行为。支持命令：",
 		m.GetCmdString("help") + "    查看帮助命令详情",
 		m.GetCmdString("sudo") + "    查看管理员命令详情",
 		m.GetCmdString("room") + "    查看聊天室命令详情",
 		m.GetCmdString("cron") + "    查看计划任务命令详情",
-		m.GetCmdString("version") + " 查看Bot版本",
 	}
 	return strings.Join(text, "\n")
 }
@@ -196,17 +190,15 @@ func (m *Admin) GetRooms() []*Room {
 	return m.Rooms
 }
 
-/*
-func (m *Admin) IsAdmin(jid string) bool {
-	u, _ := SplitJID(jid)
-	for _, admin := range m.config.GetAdmin() {
+func (m *Admin) IsAdminID(jid string) bool {
+	u, _ := utils.SplitJID(jid)
+	for _, admin := range m.Option["admin"].([]string) {
 		if u == admin {
 			return true
 		}
 	}
 	return false
 }
-*/
 
 func (m *Admin) LoginTime() time.Time {
 	return m.loginTime.UTC()
@@ -227,13 +219,6 @@ func (m *Admin) IsCmd(text string) bool {
 }
 func (m *Admin) GetCmdString(cmd string) string {
 	return m.Option["cmd_prefix"].(string) + cmd
-}
-
-func (m *Admin) VersionCommand(cmd string, msg xmpp.Chat) {
-	//TODO: version
-	//if cmd == "" || cmd == "help" {
-	//	m.bot.ReplyPub(msg, AppName+"-"+AppVersion)
-	//}
 }
 
 func (m *Admin) HelpCommand(cmd string, msg xmpp.Chat) {
@@ -476,7 +461,7 @@ func (m *Admin) cron_del(cmd string, msg xmpp.Chat) {
 }
 
 func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
-	if !m.bot.IsAdminID(msg.Remote) {
+	if !m.IsAdminID(msg.Remote) {
 		m.bot.ReplyAuto(msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
 		return
 	}
@@ -613,7 +598,7 @@ func (m *Admin) admin_subscribe(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_unsubscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		if m.bot.IsAdminID(tokens[1]) {
+		if m.IsAdminID(tokens[1]) {
 			m.bot.ReplyAuto(msg, tokens[1]+"是管理员，不允许从好友中删除！")
 		} else {
 			m.bot.RevokeSubscription(tokens[1])
@@ -629,7 +614,7 @@ func (m *Admin) admin_list_admin(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		if m.bot.IsAdminID(tokens[1]) {
+		if m.IsAdminID(tokens[1]) {
 			m.bot.ReplyAuto(msg, tokens[1]+" 已是管理员用户，不需再次增加！")
 		} else {
 			m.bot.RequestSubscription(tokens[1])
@@ -644,7 +629,7 @@ func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_del_admin(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	jid, _ := utils.SplitJID(msg.Remote)
-	if m.bot.IsAdminID(tokens[1]) && tokens[1] != jid {
+	if m.IsAdminID(tokens[1]) && tokens[1] != jid {
 		m.Option["admin"] = utils.ListDelete(m.Option["admin"].([]string), tokens[1])
 		m.bot.SendAuto(tokens[1], jid+" 临时取消了您的管理员身份!")
 	} else {

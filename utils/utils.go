@@ -23,6 +23,12 @@ import (
 	"time"
 )
 
+const (
+	UserAgentCurl    = "curl/7.45.0"
+	UserAgentFirefox = "Mozilla/5.0 (X11; Linux x86_64; rv:42.0) Gecko/20100101 Firefox/42.0"
+	UserAgentChrome  = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.73 Safari/537.36"
+)
+
 func SplitJID(jid string) (string, string) {
 	if strings.Contains(jid, "/") {
 		tokens := strings.SplitN(jid, "/", 2)
@@ -101,21 +107,29 @@ func GetMd5(str string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func HttpOpen(url string, n time.Duration) (res *http.Response, body []byte, err error) {
+func HttpOpen(url string, n time.Duration, agent string) (res *http.Response, body []byte, err error) {
 	timeout := n * time.Second
 	failTime := timeout * 2
 	c := &http.Client{
 		Timeout: timeout,
 	}
+	var req *http.Request
 
-	if res, err = c.Get(url); err != nil {
+	if req, err = http.NewRequest("GET", url, nil); err != nil {
+		return
+	}
+	if agent == "" {
+		req.Header.Set("User-Agent", UserAgentFirefox)
+	} else {
+		req.Header.Set("User-Agent", agent)
+	}
+	if res, err = c.Do(req); err != nil {
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		return
 	}
-
 	errc := make(chan error, 1)
 	go func() {
 		body, err = ioutil.ReadAll(res.Body)
