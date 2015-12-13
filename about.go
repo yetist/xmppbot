@@ -91,7 +91,7 @@ func (m *About) ModCommand(cmd string, msg xmpp.Chat) {
 }
 
 func (m *About) cmd_mod_help(cmd string, msg xmpp.Chat) {
-	help_msg := []string{"***关于命令***",
+	help_msg := []string{"===关于命令===",
 		m.bot.GetCmdString(m.Name) + " help     显示本信息",
 		m.bot.GetCmdString(m.Name) + " version  显示bot版本信息",
 		m.bot.GetCmdString(m.Name) + " ip       显示bot的ip地址",
