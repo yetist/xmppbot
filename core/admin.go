@@ -16,6 +16,7 @@ type Admin struct {
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
+	roster    xmpp.Roster
 	crons     map[string]CronEntry
 }
 
@@ -25,6 +26,7 @@ type AdminIface interface {
 	IsCmd(text string) bool
 	IsRoomID(jid string) bool
 	GetCmdString(cmd string) string
+	GetRoster() xmpp.Roster
 	LoginTime() time.Time
 }
 
@@ -139,6 +141,11 @@ func (m *Admin) Restart() {
 }
 
 func (m *Admin) Chat(msg xmpp.Chat) {
+	if msg.Type == "roster" {
+		for _, v := range msg.Roster {
+			m.bot.SetRobert(v.Remote)
+		}
+	}
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
@@ -198,6 +205,10 @@ func (m *Admin) IsAdminID(jid string) bool {
 		}
 	}
 	return false
+}
+
+func (m *Admin) GetRoster() xmpp.Roster {
+	return m.roster
 }
 
 func (m *Admin) LoginTime() time.Time {

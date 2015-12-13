@@ -90,7 +90,7 @@ func (b *Bot) Start() {
 	}
 
 	// 每分钟运行ping
-	b.cron.AddFunc("* */1 * * * ?", func() { b.client.PingC2S(b.config.GetUsername(), b.config.GetServer()) }, "xmpp ping")
+	b.cron.AddFunc("0 0/1 * * * ?", func() { b.client.PingC2S(b.config.GetUsername(), b.config.GetServer()) }, "xmpp ping")
 	b.cron.Start()
 }
 
@@ -344,6 +344,11 @@ func (b *Bot) SetRoomNick(r *Room, nick string) (n int, err error) {
 		r.SetNick(nick)
 	}
 	return
+}
+
+func (b *Bot) SetRobert(jid string) (n int, err error) {
+	msg := fmt.Sprintf("<presence from='%s/%s' to='%s'><caps:c node='http://talk.google.com/xmpp/bot/caps' ver='1.0' xmlns:caps='http://jabber.org/protocol/caps'/></presence>", b.config.GetUsername(), b.config.GetResource(), jid)
+	return b.client.SendOrg(msg)
 }
 
 func (b *Bot) GetCmdString(cmd string) string {
