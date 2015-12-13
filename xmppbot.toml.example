@@ -29,14 +29,8 @@ nickname = "snow"
 #password = ""
 
 ######## 插件配置项 ########
-[plugin.random]
-enable = false
-fuck = "fuck.txt"
-random = "random.txt"
-
-[plugin.tuling]
+[plugin.about]
 enable = true
-key = "xxxyyyy"
 
 [plugin.logger]
 enable = true
@@ -52,6 +46,15 @@ enable = true
 authuser = "hanmeimei" #maybe sqlite3, mysql
 authpass = "hanmeimei" #maybe sqlite3, mysql
 allows = ["127.0.0.1"]
+
+[plugin.random]
+enable = false
+fuck = "fuck.txt"
+random = "random.txt"
+
+[plugin.tuling]
+enable = true
+key = "xxxyyyy"
 
 [plugin.url]
 enable = true
