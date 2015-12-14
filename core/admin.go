@@ -73,10 +73,10 @@ func (m *Admin) Help() string {
 	text := []string{
 		m.GetSummary() + ": 提供了基础的机器人管理命令。",
 		m.GetCmdString("help") + "    查看帮助命令详情",
-		m.GetCmdString("admin") + "    查看管理员命令详情",
-		m.GetCmdString("bot") + "    查看机器人命令详情",
+		m.GetCmdString("admin") + "   查看管理员命令详情",
+		m.GetCmdString("bot") + "     查看机器人命令详情",
 		m.GetCmdString("cron") + "    查看计划任务命令详情",
-		m.GetCmdString("plugin") + "    查看模块命令详情",
+		m.GetCmdString("plugin") + "  查看模块命令详情",
 		m.GetCmdString("room") + "    查看聊天室命令详情",
 	}
 	return strings.Join(text, "\n")
