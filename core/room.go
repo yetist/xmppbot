@@ -53,3 +53,11 @@ func (r *Room) GetJID() string {
 func (r *Room) SetNick(nick string) {
 	r.Nickname = nick
 }
+
+func (r *Room) GetNick() string {
+	return r.Nickname
+}
+
+func (r *Room) GetPassword() string {
+	return r.Password
+}

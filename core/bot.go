@@ -228,6 +228,19 @@ func (b *Bot) SetStatus(status, info string) (n int, err error) {
 	return b.client.SendOrg(fmt.Sprintf("<presence xml:lang='en'><show>%s</show><status>%s</status></presence>", status, info))
 }
 
+func (b *Bot) InviteToMUC(jid, roomid, reason string) {
+	if b.IsRoomID(roomid) {
+		var nick, password string
+		for _, v := range b.admin.GetRooms() {
+			if roomid == v.JID {
+				nick = v.GetNick()
+				password = v.GetPassword()
+			}
+		}
+		b.client.InviteToMUC(b.config.GetUsername(), nick, jid, roomid, password, reason)
+	}
+}
+
 func (b *Bot) SendHtml(chat xmpp.Chat) {
 	text := strings.Replace(chat.Text, "&", "&amp;", -1)
 	org := fmt.Sprintf("<message to='%s' type='%s' xml:lang='en'><body>%s</body>"+

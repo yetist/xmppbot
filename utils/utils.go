@@ -2,11 +2,11 @@ package utils
 
 import (
 	"bytes"
-	"code.google.com/p/graphics-go/graphics"
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/UssieApp/graphics-go/graphics"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"

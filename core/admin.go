@@ -16,6 +16,7 @@ type Admin struct {
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
+	Friends   []string
 	roster    xmpp.Roster
 	crons     map[string]CronEntry
 }
@@ -23,6 +24,7 @@ type Admin struct {
 type AdminIface interface {
 	GetRooms() []*Room
 	IsAdminID(jid string) bool
+	IsFriendID(jid string) bool
 	IsCmd(text string) bool
 	IsRoomID(jid string) bool
 	GetCmdString(cmd string) string
@@ -143,6 +145,10 @@ func (m *Admin) Restart() {
 func (m *Admin) Chat(msg xmpp.Chat) {
 	if msg.Type == "roster" {
 		for _, v := range msg.Roster {
+			fmt.Printf("%#v\n", v)
+			if !m.IsFriendID(v.Remote) {
+				m.Friends = append(m.Friends, v.Remote)
+			}
 			m.bot.SetRobert(v.Remote)
 		}
 	}
@@ -201,6 +207,26 @@ func (m *Admin) IsAdminID(jid string) bool {
 	u, _ := utils.SplitJID(jid)
 	for _, admin := range m.Option["admin"].([]string) {
 		if u == admin {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Admin) IsSysAdminID(jid string) bool {
+	u, _ := utils.SplitJID(jid)
+	for _, admin := range m.config.Setup.Admin {
+		if u == admin {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Admin) IsFriendID(jid string) bool {
+	u, _ := utils.SplitJID(jid)
+	for _, friend := range m.Friends {
+		if u == friend {
 			return true
 		}
 	}
@@ -266,10 +292,12 @@ func (m *Admin) cmd_help_plugin(cmd string, msg xmpp.Chat) {
 func (m *Admin) RoomCommand(cmd string, msg xmpp.Chat) {
 	if cmd == "" || cmd == "help" {
 		m.room_help(cmd, msg)
-	} else if strings.HasPrefix(cmd, "msg ") {
-		m.room_msg(cmd, msg)
+	} else if strings.HasPrefix(cmd, "send ") {
+		m.room_send(cmd, msg)
 	} else if strings.HasPrefix(cmd, "nick ") {
 		m.room_nick(cmd, msg)
+	} else if strings.HasPrefix(cmd, "invite ") {
+		m.room_invite(cmd, msg)
 	} else if strings.HasPrefix(cmd, "list-blocks ") {
 		m.room_list_blocks(cmd, msg)
 	} else if strings.HasPrefix(cmd, "block ") {
@@ -284,9 +312,10 @@ func (m *Admin) RoomCommand(cmd string, msg xmpp.Chat) {
 func (m *Admin) room_help(cmd string, msg xmpp.Chat) {
 
 	help_msg := []string{"==聊天室命令==",
-		m.GetCmdString("room") + " help                      显示本信息",
-		m.GetCmdString("room") + " msg <jid|all> <msg>       让机器人在聊天室中发送消息msg",
-		m.GetCmdString("room") + " nick <jid|all> <NickName> 修改机器人在聊天室的昵称为NickName", "",
+		m.GetCmdString("room") + " help                           显示本信息",
+		m.GetCmdString("room") + " send <roomid|all> <msg>        让机器人在聊天室中发送消息msg",
+		m.GetCmdString("room") + " nick <roomid|all> <NickName>   修改机器人在聊天室的昵称为NickName",
+		m.GetCmdString("room") + " invite <jid> <roomid> [reason] 邀请某人进入聊天室", "",
 
 		m.GetCmdString("room") + " list-blocks <jid|all>     查看聊天室屏蔽列表",
 		m.GetCmdString("room") + " block <jid|all> <who>     屏蔽who，对who发送的消息不响应",
@@ -295,8 +324,8 @@ func (m *Admin) room_help(cmd string, msg xmpp.Chat) {
 	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }
 
-func (m *Admin) room_msg(cmd string, msg xmpp.Chat) {
-	//"msg <jid|all> <msg>":       "让机器人在聊天室中发送消息msg",
+func (m *Admin) room_send(cmd string, msg xmpp.Chat) {
+	//"send <jid|all> <msg>":       "让机器人在聊天室中发送消息msg",
 	tokens := strings.SplitN(cmd, " ", 3)
 	if len(tokens) != 3 {
 		return
@@ -333,6 +362,25 @@ func (m *Admin) room_nick(cmd string, msg xmpp.Chat) {
 			}
 		}
 	}
+}
+
+func (m *Admin) room_invite(cmd string, msg xmpp.Chat) {
+	//invite <jid> <roomid> [reason] 修改机器人在聊天室的昵称为NickName", "",
+	var jid, roomid, reason string
+	if tokens := strings.SplitN(cmd, " ", 4); len(tokens) == 4 {
+		jid = tokens[1]
+		roomid = tokens[2]
+		reason = tokens[3]
+	} else if tokens := strings.SplitN(cmd, " ", 3); len(tokens) == 3 {
+		jid = tokens[1]
+		roomid = tokens[2]
+	} else {
+		return
+	}
+	if !m.IsFriendID(jid) {
+		return
+	}
+	m.bot.InviteToMUC(jid, roomid, reason)
 }
 
 func (m *Admin) room_list_blocks(cmd string, msg xmpp.Chat) {
@@ -480,6 +528,10 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 		m.admin_help(cmd, msg)
 	} else if cmd == "restart" {
 		m.admin_restart(cmd, msg)
+	} else if strings.HasPrefix(cmd, "status ") {
+		m.admin_status(cmd, msg)
+	} else if strings.HasPrefix(cmd, "send ") {
+		m.admin_send(cmd, msg)
 	} else if cmd == "list-all-plugins" {
 		m.admin_list_all_plugins(cmd, msg)
 	} else if cmd == "list-plugins" {
@@ -488,12 +540,12 @@ func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
 		m.admin_disable_plugin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "enable ") {
 		m.admin_enable_plugin(cmd, msg)
+	} else if cmd == "list-friends" {
+		m.admin_list_friends(cmd, msg)
 	} else if strings.HasPrefix(cmd, "subscribe ") {
 		m.admin_subscribe(cmd, msg)
 	} else if strings.HasPrefix(cmd, "unsubscribe ") {
 		m.admin_unsubscribe(cmd, msg)
-	} else if strings.HasPrefix(cmd, "status ") {
-		m.admin_status(cmd, msg)
 	} else if cmd == "list-admin" {
 		m.admin_list_admin(cmd, msg)
 	} else if strings.HasPrefix(cmd, "add-admin ") {
@@ -519,9 +571,12 @@ func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 	help_msg := []string{"==管理员命令==",
 		m.GetCmdString("sudo") + " help                      显示本信息",
 		m.GetCmdString("sudo") + " restart                   重新载入配置文件，初始化各模块",
-		m.GetCmdString("sudo") + " status <status> [message] 设置机器人在线状态",
-		m.GetCmdString("sudo") + " subscribe <jid>           请求加<jid>为好友",
-		m.GetCmdString("sudo") + " unsubscribe <jid>         不再信认<jid>为好友", "",
+		m.GetCmdString("sudo") + " status <status> [message] 设置机器人在线状态", "",
+		m.GetCmdString("sudo") + " send <jid> [message]      给好友发送消息", "",
+
+		m.GetCmdString("sudo") + " list-friends      列出好友帐号",
+		m.GetCmdString("sudo") + " subscribe <jid>   新增好友帐号",
+		m.GetCmdString("sudo") + " unsubscribe <jid> 删除好友帐号", "",
 
 		m.GetCmdString("sudo") + " list-all-plugins  列出所有的模块(管理员命令)",
 		m.GetCmdString("sudo") + " list-plugins      列出当前启用的模块(管理员命令)",
@@ -530,7 +585,7 @@ func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 
 		m.GetCmdString("sudo") + " list-admin       列出管理员帐号",
 		m.GetCmdString("sudo") + " add-admin <jid>  新增管理员帐号",
-		m.GetCmdString("sudo") + " del-admin <jid>  新增管理员帐号", "",
+		m.GetCmdString("sudo") + " del-admin <jid>  删除管理员帐号", "",
 
 		m.GetCmdString("sudo") + " list-options [Plugin]       列出所有模块可配置选项",
 		m.GetCmdString("sudo") + " set-option <field> <value>  设置模块相关选项", "",
@@ -545,6 +600,17 @@ func (m *Admin) admin_help(cmd string, msg xmpp.Chat) {
 func (m *Admin) admin_restart(cmd string, msg xmpp.Chat) {
 	m.Restart() //重启内置插件
 	m.bot.Restart()
+}
+
+func (m *Admin) admin_send(cmd string, msg xmpp.Chat) {
+	//"send <jid> <msg>":       "让机器人给好友发送消息msg",
+	tokens := strings.SplitN(cmd, " ", 3)
+	if len(tokens) != 3 {
+		return
+	}
+	if m.IsFriendID(tokens[1]) {
+		m.bot.SendAuto(tokens[1], tokens[2])
+	}
 }
 
 func (m *Admin) admin_list_all_plugins(cmd string, msg xmpp.Chat) {
@@ -599,20 +665,46 @@ func (m *Admin) admin_status(cmd string, msg xmpp.Chat) {
 	}
 }
 
+func (m *Admin) admin_list_friends(cmd string, msg xmpp.Chat) {
+	txt := "==好友列表==\n" + strings.Join(m.Friends, "\n")
+	m.bot.ReplyAuto(msg, txt)
+}
+
 func (m *Admin) admin_subscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
-		m.bot.RequestSubscription(tokens[1])
+		if !m.IsFriendID(tokens[1]) {
+			m.bot.RequestSubscription(tokens[1])
+		} else {
+			m.bot.ReplyAuto(msg, tokens[1]+"已经是好友，不需要多次增加！")
+		}
 	}
 }
 
 func (m *Admin) admin_unsubscribe(cmd string, msg xmpp.Chat) {
 	tokens := strings.SplitN(cmd, " ", 2)
 	if len(tokens) == 2 && strings.Contains(tokens[1], "@") {
+		if !m.IsFriendID(tokens[1]) {
+			m.bot.ReplyAuto(msg, tokens[1]+"不是好友，不需要删除！")
+			return
+		}
+		jid, _ := utils.SplitJID(msg.Remote)
+		if tokens[1] == jid {
+			m.bot.ReplyAuto(msg, tokens[1]+"是你的id, 不支持这个操作！")
+			return
+		}
+
+		if m.IsSysAdminID(tokens[1]) {
+			m.bot.ReplyAuto(msg, "不允许删除超级管理员帐号 "+tokens[1]+"！")
+			return
+		}
+		m.Friends = utils.ListDelete(m.Friends, tokens[1])
+		m.bot.RevokeSubscription(tokens[1])
 		if m.IsAdminID(tokens[1]) {
-			m.bot.ReplyAuto(msg, tokens[1]+"是管理员，不允许从好友中删除！")
+			m.Option["admin"] = utils.ListDelete(m.Option["admin"].([]string), tokens[1])
+			m.bot.ReplyAuto(msg, "将管理员帐号 "+tokens[1]+" 从好友中删除！")
 		} else {
-			m.bot.RevokeSubscription(tokens[1])
+			m.bot.ReplyAuto(msg, "将帐号 "+tokens[1]+" 从好友中删除！")
 		}
 	}
 }
@@ -628,11 +720,13 @@ func (m *Admin) admin_add_admin(cmd string, msg xmpp.Chat) {
 		if m.IsAdminID(tokens[1]) {
 			m.bot.ReplyAuto(msg, tokens[1]+" 已是管理员用户，不需再次增加！")
 		} else {
-			m.bot.RequestSubscription(tokens[1])
+			if !m.IsFriendID(tokens[1]) {
+				m.bot.RequestSubscription(tokens[1])
+			}
 			m.Option["admin"] = append(m.Option["admin"].([]string), tokens[1])
 			m.bot.ReplyAuto(msg, "您已添加 "+tokens[1]+"为管理员!")
 			jid, _ := utils.SplitJID(msg.Remote)
-			m.bot.SendAuto(tokens[1], jid+" 临时添加您为管理员!")
+			m.bot.SendAuto(tokens[1], jid+" 添加您为临时管理员!")
 		}
 	}
 }
