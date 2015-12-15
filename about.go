@@ -29,7 +29,7 @@ func (m *About) GetSummary() string {
 func (m *About) Help() string {
 	msg := []string{
 		"关于模块，提供Bot相关的消息。支持命令:",
-		m.bot.GetCmdString(m.GetName()) + "    关于模块命令",
+		m.bot.GetCmdString(m.GetName()) + "    关于模块命令" + m.bot.ShowPerm(m.GetName()),
 	}
 	return strings.Join(msg, "\n")
 }
@@ -45,6 +45,7 @@ func (m *About) CheckEnv() bool {
 func (m *About) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
+	m.bot.SetPerm(m.GetName(), core.AllTalk)
 }
 
 func (m *About) Stop() {
@@ -60,7 +61,7 @@ func (m *About) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
-	if strings.HasPrefix(msg.Text, m.bot.GetCmdString(m.GetName())) {
+	if strings.HasPrefix(msg.Text, m.bot.GetCmdString(m.GetName())) && m.bot.HasPerm(m.GetName(), msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.bot.GetCmdString(m.GetName())):])
 		m.ModCommand(cmd, msg)
 	}

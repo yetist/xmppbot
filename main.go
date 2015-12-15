@@ -84,17 +84,18 @@ func parseArgs() {
 // 新增模块在这里注册
 func CreatePlugin(name string, opt map[string]interface{}) core.BotIface {
 	var plugin core.BotIface
-	if name == "random" {
+	switch name {
+	case "random":
 		plugin = NewRandom(name, opt)
-	} else if name == "url" {
+	case "url":
 		plugin = NewUrl(name, opt)
-	} else if name == "tuling" {
+	case "tuling":
 		plugin = NewTuling(name, opt)
-	} else if name == "logger" {
+	case "logger":
 		plugin = NewLogger(name, opt)
-	} else if name == "notify" {
+	case "notify":
 		plugin = NewNotify(name, opt)
-	} else if name == "about" {
+	case "about":
 		plugin = NewAbout(name, opt)
 	}
 	return plugin
@@ -103,6 +104,17 @@ func CreatePlugin(name string, opt map[string]interface{}) core.BotIface {
 func main() {
 	var client *xmpp.Client
 	var err error
+	/*
+		var newplugin = map[string]func(name string, opt map[string]interface{}) core.BotIface{
+			"random": func(name string, opt map[string]interface{}) core.BotIface { return NewRandom(name, opt) },
+			"url":    func(name string, opt map[string]interface{}) core.BotIface { return NewUrl(name, opt) },
+			"tuling": func(name string, opt map[string]interface{}) core.BotIface { return NewTuling(name, opt) },
+			"logger": func(name string, opt map[string]interface{}) core.BotIface { return NewLogger(name, opt) },
+			"notify": func(name string, opt map[string]interface{}) core.BotIface { return NewNotify(name, opt) },
+			"about":  func(name string, opt map[string]interface{}) core.BotIface { return NewAbout(name, opt) },
+		}
+	*/
+
 	parseArgs()
 
 	if client, err = NewClient(); err != nil {

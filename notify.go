@@ -44,7 +44,7 @@ func (m *Notify) GetSummary() string {
 func (m *Notify) Help() string {
 	msg := []string{
 		m.GetSummary() + ": 可将通过http协议接收到的消息转发给好友或聊天室．支持命令:",
-		m.bot.GetCmdString(m.GetName()) + "    通知模块命令",
+		m.bot.GetCmdString(m.GetName()) + "    通知模块命令" + m.bot.ShowPerm(m.GetName()),
 	}
 	return strings.Join(msg, "\n")
 }
@@ -101,6 +101,7 @@ func (m *Notify) JIDPage(w http.ResponseWriter, r *http.Request) {
 func (m *Notify) Start(bot *core.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
+	m.bot.SetPerm(m.GetName(), core.ChatTalk|core.AdminPerm)
 	m.bot.AddHandler(m.GetName(), "/{jid}/", m.JIDPage, "jidpage")
 }
 
@@ -118,10 +119,8 @@ func (m *Notify) Chat(msg xmpp.Chat) {
 	if len(msg.Text) == 0 || !msg.Stamp.IsZero() {
 		return
 	}
-	if msg.Type == "groupchat" {
-		return
-	}
-	if strings.HasPrefix(msg.Text, m.bot.GetCmdString(m.GetName())) {
+
+	if strings.HasPrefix(msg.Text, m.bot.GetCmdString(m.GetName())) && m.bot.HasPerm(m.GetName(), msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.bot.GetCmdString(m.GetName())):])
 		m.ModCommand(cmd, msg)
 	}

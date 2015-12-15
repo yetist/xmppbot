@@ -5,8 +5,16 @@ import (
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/utils"
+	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	ChatTalk  = 1
+	RoomTalk  = 2
+	AllTalk   = 3
+	AdminPerm = 4
 )
 
 type Admin struct {
@@ -19,6 +27,7 @@ type Admin struct {
 	Friends   []string
 	admins    []string
 	crons     map[string]CronEntry
+	perms     map[string]int
 }
 
 type AdminIface interface {
@@ -29,6 +38,9 @@ type AdminIface interface {
 	IsRoomID(jid string) bool
 	GetCmdString(cmd string) string
 	LoginTime() time.Time
+	HasPerm(name string, msg xmpp.Chat) bool
+	ShowPerm(name string) string
+	SetPerm(name string, perm int)
 }
 
 type CronEntry struct {
@@ -57,7 +69,50 @@ func NewAdmin(name string, config config.Config) *Admin {
 			"cmd_prefix":     config.GetCmdPrefix(),
 			"auto-subscribe": config.GetAutoSubscribe(),
 		},
+		perms: map[string]int{
+			"help":   AllTalk,
+			"admin":  ChatTalk | AdminPerm,
+			"bot":    ChatTalk | AdminPerm,
+			"cron":   ChatTalk | AdminPerm,
+			"plugin": ChatTalk | AdminPerm,
+			"room":   AllTalk,
+		},
 	}
+}
+
+func (m *Admin) HasPerm(name string, msg xmpp.Chat) bool {
+	var talkcheck bool
+	if msg.Type == "chat" {
+		talkcheck = m.perms[name]&ChatTalk != 0
+	} else if msg.Type == "groupchat" {
+		talkcheck = m.perms[name]&RoomTalk != 0
+	}
+	permcheck := true
+	if m.perms[name]&AdminPerm != 0 {
+		permcheck = m.IsAdminID(msg.Remote)
+	}
+	if !permcheck {
+		m.bot.ReplyAuto(msg, "本命令仅限管理员使用。")
+	}
+	return talkcheck && permcheck
+}
+
+func (m *Admin) ShowPerm(name string) string {
+	var perms []string
+	if m.perms[name]&ChatTalk != 0 {
+		perms = append(perms, "chat")
+	}
+	if m.perms[name]&RoomTalk != 0 {
+		perms = append(perms, "room")
+	}
+	if m.perms[name]&AdminPerm != 0 {
+		perms = append(perms, "admin")
+	}
+	return "(" + strings.Join(perms, ",") + ")"
+}
+
+func (m *Admin) SetPerm(name string, perm int) {
+	m.perms[name] = perm
 }
 
 // BotInterface
@@ -72,12 +127,12 @@ func (m *Admin) GetSummary() string {
 func (m *Admin) Help() string {
 	text := []string{
 		m.GetSummary() + ": 提供了基础的机器人管理命令。",
-		m.GetCmdString("help") + "    查看帮助命令详情",
-		m.GetCmdString("admin") + "   查看管理员命令详情",
-		m.GetCmdString("bot") + "     查看机器人命令详情",
-		m.GetCmdString("cron") + "    查看计划任务命令详情",
-		m.GetCmdString("plugin") + "  查看模块命令详情",
-		m.GetCmdString("room") + "    查看聊天室命令详情",
+		m.GetCmdString("help") + "    查看帮助命令详情" + m.ShowPerm("help"),
+		m.GetCmdString("admin") + "   查看管理员命令详情" + m.ShowPerm("admin"),
+		m.GetCmdString("bot") + "     查看机器人命令详情" + m.ShowPerm("bot"),
+		m.GetCmdString("cron") + "    查看计划任务命令详情" + m.ShowPerm("cron"),
+		m.GetCmdString("plugin") + "  查看模块命令详情" + m.ShowPerm("plugin"),
+		m.GetCmdString("room") + "    查看聊天室命令详情" + m.ShowPerm("room"),
 	}
 	return strings.Join(text, "\n")
 }
@@ -179,22 +234,22 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 	}
 
 	// 仅处理好友消息
-	if strings.HasPrefix(msg.Text, m.GetCmdString("help")) {
+	if strings.HasPrefix(msg.Text, m.GetCmdString("help")) && m.HasPerm("help", msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("help")):])
 		m.HelpCommand(cmd, msg)
-	} else if strings.HasPrefix(msg.Text, m.GetCmdString("room")) {
+	} else if strings.HasPrefix(msg.Text, m.GetCmdString("room")) && m.HasPerm("room", msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("room")):])
 		m.RoomCommand(cmd, msg)
-	} else if strings.HasPrefix(msg.Text, m.GetCmdString("cron")) {
+	} else if strings.HasPrefix(msg.Text, m.GetCmdString("cron")) && m.HasPerm("cron", msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("cron")):])
 		m.CronCommand(cmd, msg)
-	} else if strings.HasPrefix(msg.Text, m.GetCmdString("bot")) {
+	} else if strings.HasPrefix(msg.Text, m.GetCmdString("bot")) && m.HasPerm("bot", msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("bot")):])
 		m.BotCommand(cmd, msg)
-	} else if strings.HasPrefix(msg.Text, m.GetCmdString("admin")) {
+	} else if strings.HasPrefix(msg.Text, m.GetCmdString("admin")) && m.HasPerm("admin", msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("admin")):])
 		m.AdminCommand(cmd, msg)
-	} else if strings.HasPrefix(msg.Text, m.GetCmdString("plugin")) {
+	} else if strings.HasPrefix(msg.Text, m.GetCmdString("plugin")) && m.HasPerm("plugin", msg) {
 		cmd := strings.TrimSpace(msg.Text[len(m.GetCmdString("plugin")):])
 		m.PluginCommand(cmd, msg)
 	}
@@ -594,14 +649,12 @@ func (m *Admin) cron_del(cmd string, msg xmpp.Chat) {
 
 /* bot 命令 */
 func (m *Admin) BotCommand(cmd string, msg xmpp.Chat) {
-	if !m.IsAdminID(msg.Remote) {
-		m.bot.ReplyAuto(msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
-		return
-	}
 	if cmd == "" || cmd == "help" {
 		m.bot_help(cmd, msg)
 	} else if cmd == "restart" {
 		m.bot_restart(cmd, msg)
+	} else if strings.HasPrefix(cmd, "perm ") {
+		m.bot_perm(cmd, msg)
 	} else if strings.HasPrefix(cmd, "status ") {
 		m.bot_status(cmd, msg)
 	} else if strings.HasPrefix(cmd, "send ") {
@@ -621,6 +674,7 @@ func (m *Admin) bot_help(cmd string, msg xmpp.Chat) {
 	help_msg := []string{"==管理员命令==",
 		m.GetCmdString("bot") + " help                      显示本信息",
 		m.GetCmdString("bot") + " restart                   重新载入配置文件，初始化各模块",
+		m.GetCmdString("bot") + " perm <cmd> <value>        设置命令权限",
 		m.GetCmdString("bot") + " status <status> [message] 设置机器人在线状态",
 		m.GetCmdString("bot") + " send <jid> [message]      给好友发送消息", "",
 
@@ -634,6 +688,33 @@ func (m *Admin) bot_help(cmd string, msg xmpp.Chat) {
 func (m *Admin) bot_restart(cmd string, msg xmpp.Chat) {
 	m.Restart() //重启内置插件
 	m.bot.Restart()
+}
+
+//perm <cmd> <value>        设置命令权限",
+func (m *Admin) bot_perm(cmd string, msg xmpp.Chat) {
+	tokens := strings.SplitN(cmd, " ", 3)
+	if len(tokens) != 3 {
+		return
+	}
+	var perm int
+	var err error
+	if perm, err = strconv.Atoi(tokens[2]); err != nil {
+		ps := strings.Split(tokens[2], ",")
+		for _, v := range ps {
+			switch strings.ToLower(v) {
+			case "chat":
+				perm |= ChatTalk
+			case "room":
+				perm |= RoomTalk
+			case "admin":
+				perm |= AdminPerm
+			}
+		}
+	}
+	if !(perm >= 1 && perm <= 7) {
+		return
+	}
+	m.SetPerm(tokens[1], perm)
 }
 
 func (m *Admin) bot_send(cmd string, msg xmpp.Chat) {
@@ -707,10 +788,6 @@ func (m *Admin) bot_unsubscribe(cmd string, msg xmpp.Chat) {
 
 /* admin 命令 */
 func (m *Admin) AdminCommand(cmd string, msg xmpp.Chat) {
-	if !m.IsAdminID(msg.Remote) {
-		m.bot.ReplyAuto(msg, "请确认您是管理员，并且通过好友消息发送了此命令。")
-		return
-	}
 	if cmd == "" || cmd == "help" {
 		m.admin_help(cmd, msg)
 	} else if cmd == "list" {
@@ -793,13 +870,13 @@ func (m *Admin) PluginCommand(cmd string, msg xmpp.Chat) {
 
 func (m *Admin) plugin_help(cmd string, msg xmpp.Chat) {
 	help_msg := []string{"==插件命令==",
-		m.GetCmdString("plugin") + " help                 显示本信息",
-		m.GetCmdString("plugin") + " all                  列出所有的模块",
-		m.GetCmdString("plugin") + " list                 列出当前启用的模块",
-		m.GetCmdString("plugin") + " disable <Plugin>     禁用模块",
-		m.GetCmdString("plugin") + " enable <Plugin>      启用模块",
-		m.GetCmdString("plugin") + " get [Plugin]         列出模块属性",
-		m.GetCmdString("plugin") + " set <field> <value>  设置模块属性",
+		m.GetCmdString("plugin") + " help                   显示本信息",
+		m.GetCmdString("plugin") + " all                    列出所有的模块",
+		m.GetCmdString("plugin") + " list                   列出当前启用的模块",
+		m.GetCmdString("plugin") + " disable <Plugin>       禁用模块",
+		m.GetCmdString("plugin") + " enable <Plugin>        启用模块",
+		m.GetCmdString("plugin") + " get [Plugin]           列出模块属性",
+		m.GetCmdString("plugin") + " set <field> <value>    设置模块属性",
 	}
 	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }

@@ -372,6 +372,18 @@ func (b *Bot) IsCmd(text string) bool {
 	return b.admin.IsCmd(text)
 }
 
+func (b *Bot) HasPerm(name string, msg xmpp.Chat) bool {
+	return b.admin.HasPerm(name, msg)
+}
+
+func (b *Bot) ShowPerm(name string) string {
+	return b.admin.ShowPerm(name)
+}
+
+func (b *Bot) SetPerm(name string, perm int) {
+	b.admin.SetPerm(name, perm)
+}
+
 func (b *Bot) GetCron() *cron.Cron {
 	return b.cron
 }
