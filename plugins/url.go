@@ -1,4 +1,4 @@
-package main
+package plugins
 
 import (
 	"fmt"
@@ -73,7 +73,7 @@ func (m *Url) Stop() {
 }
 
 func (m *Url) Restart() {
-	opt := cfg.GetPlugin(m.GetName())
+	opt := m.bot.GetPluginOption(m.GetName())
 	m.Option["chat"] = opt["chat"].(bool)
 	m.Option["room"] = opt["room"].(bool)
 	m.Option["timeout"] = opt["timeout"].(int64)

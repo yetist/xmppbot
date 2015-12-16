@@ -7,6 +7,7 @@ import (
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/plugins"
 	"github.com/yetist/xmppbot/utils"
 	"log"
 	"os"
@@ -82,21 +83,21 @@ func parseArgs() {
 }
 
 // 新增模块在这里注册
-func CreatePlugin(name string, opt map[string]interface{}) core.BotIface {
-	var plugin core.BotIface
+func CreatePlugin(name string, opt map[string]interface{}) core.PluginIface {
+	var plugin core.PluginIface
 	switch name {
 	case "random":
-		plugin = NewRandom(name, opt)
+		plugin = plugins.NewRandom(name, opt)
 	case "url":
-		plugin = NewUrl(name, opt)
+		plugin = plugins.NewUrl(name, opt)
 	case "tuling":
-		plugin = NewTuling(name, opt)
+		plugin = plugins.NewTuling(name, opt)
 	case "logger":
-		plugin = NewLogger(name, opt)
+		plugin = plugins.NewLogger(name, opt)
 	case "notify":
-		plugin = NewNotify(name, opt)
+		plugin = plugins.NewNotify(name, opt)
 	case "about":
-		plugin = NewAbout(name, opt)
+		plugin = plugins.NewAbout(name, opt)
 	}
 	return plugin
 }

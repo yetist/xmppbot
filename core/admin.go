@@ -30,19 +30,6 @@ type Admin struct {
 	perms     map[string]int
 }
 
-type AdminIface interface {
-	GetRooms() []*Room
-	IsAdminID(jid string) bool
-	IsFriendID(jid string) bool
-	IsCmd(text string) bool
-	IsRoomID(jid string) bool
-	GetCmdString(cmd string) string
-	LoginTime() time.Time
-	HasPerm(name string, msg xmpp.Chat) bool
-	ShowPerm(name string) string
-	SetPerm(name string, perm int)
-}
-
 type CronEntry struct {
 	spec string
 	to   string

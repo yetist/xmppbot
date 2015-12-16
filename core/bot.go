@@ -16,24 +16,10 @@ type Bot struct {
 	client       *xmpp.Client
 	cron         *cron.Cron
 	web          *WebServer
-	plugins      []BotIface
+	plugins      []PluginIface
 	admin        AdminIface
 	config       config.Config
 	createPlugin NewFunc
-}
-
-type BotIface interface {
-	Help() string
-	GetName() string
-	GetSummary() string
-	CheckEnv() bool
-	Start(bot *Bot)
-	Stop()
-	Restart()
-	Chat(chat xmpp.Chat)
-	Presence(pres xmpp.Presence)
-	GetOptions() map[string]string
-	SetOption(key, val string)
 }
 
 func NewBot(client *xmpp.Client, config config.Config, f NewFunc) *Bot {
@@ -61,11 +47,15 @@ func NewBot(client *xmpp.Client, config config.Config, f NewFunc) *Bot {
 	return b
 }
 
-func (b *Bot) GetPlugins() []BotIface {
+func (b *Bot) GetPlugins() []PluginIface {
 	return b.plugins
 }
 
-type NewFunc func(name string, opt map[string]interface{}) BotIface
+func (b *Bot) GetPluginOption(name string) map[string]interface{} {
+	return b.config.Plugin[name]
+}
+
+type NewFunc func(name string, opt map[string]interface{}) PluginIface
 
 // Interface(), 初始化并加载所有模块
 func (b *Bot) Init(f NewFunc) {
@@ -154,7 +144,7 @@ func (b *Bot) Restart() {
 }
 
 //获取模块
-func (b *Bot) GetPluginByName(name string) BotIface {
+func (b *Bot) GetPluginByName(name string) PluginIface {
 	for _, v := range b.plugins {
 		if name == v.GetName() {
 			return v

@@ -1,12 +1,11 @@
-package main
+package plugins
 
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
-	"github.com/yetist/xmppbot/config"
+	//"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/core"
 	"github.com/yetist/xmppbot/utils"
-	"io/ioutil"
 	"math/rand"
 	"strings"
 	"time"
@@ -64,12 +63,12 @@ func (m *Random) Description() string {
 }
 
 func (m *Random) CheckEnv() bool {
-	if config.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
-		return false
-	}
-	if config.GetDataPath(AppName, AppVersion, m.Random) == "" {
-		return false
-	}
+	//if config.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
+	//	return false
+	//}
+	//if config.GetDataPath(AppName, AppVersion, m.Random) == "" {
+	//	return false
+	//}
 	return true
 }
 
@@ -78,13 +77,13 @@ func (m *Random) Start(bot *core.Bot) {
 	m.bot = bot
 	rand.Seed(time.Now().Unix())
 
-	if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Fuck)); err == nil {
-		m.FuckList = strings.Split(string(data), "\n")
-	}
+	//if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Fuck)); err == nil {
+	//	m.FuckList = strings.Split(string(data), "\n")
+	//}
 
-	if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Random)); err == nil {
-		m.RandomList = strings.Split(string(data), "\n")
-	}
+	//if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Random)); err == nil {
+	//	m.RandomList = strings.Split(string(data), "\n")
+	//}
 }
 
 func (m *Random) Stop() {
