@@ -80,8 +80,8 @@ func (m *About) SetOption(key, val string) {
 func (m *About) ModCommand(cmd string, msg xmpp.Chat) {
 	if cmd == "" || cmd == "help" {
 		m.cmd_mod_help(cmd, msg)
-		//	} else if cmd == "version" {
-		//		m.cmd_mod_version(cmd, msg)
+	} else if cmd == "version" {
+		m.cmd_mod_version(cmd, msg)
 	} else if cmd == "ip" {
 		m.cmd_mod_ip(cmd, msg)
 	} else if cmd == "todo" {
@@ -94,16 +94,17 @@ func (m *About) ModCommand(cmd string, msg xmpp.Chat) {
 func (m *About) cmd_mod_help(cmd string, msg xmpp.Chat) {
 	help_msg := []string{"===关于命令===",
 		m.bot.GetCmdString(m.Name) + " help     显示本信息",
-		//		m.bot.GetCmdString(m.Name) + " version  显示bot版本信息",
+		m.bot.GetCmdString(m.Name) + " version  显示bot版本信息",
 		m.bot.GetCmdString(m.Name) + " ip       显示bot的ip地址",
 		m.bot.GetCmdString(m.Name) + " todo     显示bot的开发计划",
 	}
 	m.bot.ReplyAuto(msg, strings.Join(help_msg, "\n"))
 }
 
-//func (m *About) cmd_mod_version(cmd string, msg xmpp.Chat) {
-//	m.bot.ReplyPub(msg, AppName+"-"+AppVersion)
-//}
+func (m *About) cmd_mod_version(cmd string, msg xmpp.Chat) {
+	cfg := m.bot.GetConfig()
+	m.bot.ReplyPub(msg, cfg.AppName+"-"+cfg.AppVersion)
+}
 
 func (m *About) cmd_mod_ip(cmd string, msg xmpp.Chat) {
 	local_ip := getLocalIP()

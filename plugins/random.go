@@ -6,6 +6,7 @@ import (
 	//"github.com/yetist/xmppbot/config"
 	"github.com/yetist/xmppbot/core"
 	"github.com/yetist/xmppbot/utils"
+	"io/ioutil"
 	"math/rand"
 	"strings"
 	"time"
@@ -13,8 +14,8 @@ import (
 
 type Random struct {
 	Name       string
-	Fuck       string
-	Random     string
+	FuckPath   string
+	RandomPath string
 	FuckList   []string
 	RandomList []string
 	bot        *core.Bot
@@ -23,9 +24,9 @@ type Random struct {
 
 func NewRandom(name string, opt map[string]interface{}) *Random {
 	return &Random{
-		Name:   name,
-		Fuck:   opt["fuck"].(string),
-		Random: opt["random"].(string),
+		Name:       name,
+		FuckPath:   opt["fuck"].(string),
+		RandomPath: opt["random"].(string),
 		Option: map[string]bool{
 			"chat": true,
 			"room": true,
@@ -63,12 +64,12 @@ func (m *Random) Description() string {
 }
 
 func (m *Random) CheckEnv() bool {
-	//if config.GetDataPath(AppName, AppVersion, m.Fuck) == "" {
-	//	return false
-	//}
-	//if config.GetDataPath(AppName, AppVersion, m.Random) == "" {
-	//	return false
-	//}
+	if !utils.IsFile(m.FuckPath) {
+		return false
+	}
+	if !utils.IsFile(m.RandomPath) {
+		return false
+	}
 	return true
 }
 
@@ -77,13 +78,13 @@ func (m *Random) Start(bot *core.Bot) {
 	m.bot = bot
 	rand.Seed(time.Now().Unix())
 
-	//if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Fuck)); err == nil {
-	//	m.FuckList = strings.Split(string(data), "\n")
-	//}
+	if data, err := ioutil.ReadFile(m.FuckPath); err == nil {
+		m.FuckList = strings.Split(string(data), "\n")
+	}
 
-	//if data, err := ioutil.ReadFile(config.GetDataPath(AppName, AppVersion, m.Random)); err == nil {
-	//	m.RandomList = strings.Split(string(data), "\n")
-	//}
+	if data, err := ioutil.ReadFile(m.RandomPath); err == nil {
+		m.RandomList = strings.Split(string(data), "\n")
+	}
 }
 
 func (m *Random) Stop() {
@@ -91,6 +92,16 @@ func (m *Random) Stop() {
 }
 
 func (m *Random) Restart() {
+	rand.Seed(time.Now().Unix())
+
+	// 重新载入文件内容。
+	if data, err := ioutil.ReadFile(m.FuckPath); err == nil {
+		m.FuckList = strings.Split(string(data), "\n")
+	}
+
+	if data, err := ioutil.ReadFile(m.RandomPath); err == nil {
+		m.RandomList = strings.Split(string(data), "\n")
+	}
 }
 
 func (m *Random) Chat(msg xmpp.Chat) {

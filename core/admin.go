@@ -20,7 +20,7 @@ const (
 type Admin struct {
 	Name      string
 	bot       *Bot
-	config    config.Config
+	cfg       config.Config
 	Option    map[string]interface{}
 	loginTime time.Time
 	Rooms     []*Room
@@ -36,26 +36,10 @@ type CronEntry struct {
 	text string
 }
 
-func NewAdmin(name string, config config.Config) *Admin {
-	var rooms []*Room
-	for _, i := range config.GetRooms() {
-		password := ""
-		if i["password"] != nil {
-			password = i["password"].(string)
-		}
-		room := NewRoom(i["jid"].(string), i["nickname"].(string), password)
-		rooms = append(rooms, room)
-	}
+func NewAdmin(name string) *Admin {
 	return &Admin{
-		Name:   name,
-		Rooms:  rooms,
-		config: config,
-		admins: config.GetAdmin(),
-		crons:  map[string]CronEntry{},
-		Option: map[string]interface{}{
-			"cmd_prefix":     config.GetCmdPrefix(),
-			"auto-subscribe": config.GetAutoSubscribe(),
-		},
+		Name:  name,
+		crons: map[string]CronEntry{},
 		perms: map[string]int{
 			"help":   AllTalk,
 			"admin":  ChatTalk | AdminPerm,
@@ -165,16 +149,27 @@ func (m *Admin) CheckEnv() bool {
 
 func (m *Admin) Start(bot *Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
-	m.bot = bot
 	m.loginTime = time.Now()
+	m.bot = bot
 	m.bot.Roster()
-	for _, room := range m.Rooms {
+	m.cfg = m.bot.GetConfig()
+	m.admins = m.cfg.Setup.Admin
+	m.Option = map[string]interface{}{
+		"cmd_prefix":     m.cfg.Setup.CmdPrefix,
+		"auto-subscribe": m.cfg.Setup.AutoSubscribe,
+	}
+	for _, i := range m.cfg.Setup.Rooms {
+		password := ""
+		if i["password"] != nil {
+			password = i["password"].(string)
+		}
+		room := NewRoom(i["jid"].(string), i["nickname"].(string), password)
 		if len(room.Password) > 0 {
 			m.bot.JoinProtectedMUC(room.JID, room.Nickname, room.Password)
 		} else {
 			m.bot.JoinMUC(room.JID, room.Nickname)
 		}
-		fmt.Printf("[%s] Join to %s as %s\n", m.Name, room.JID, room.Nickname)
+		m.Rooms = append(m.Rooms, room)
 	}
 }
 
@@ -187,21 +182,7 @@ func (m *Admin) Stop() {
 
 func (m *Admin) Restart() {
 	m.Stop()
-	m.Option["cmd_prefix"] = m.config.GetCmdPrefix()
-	m.Option["auto-subscribe"] = m.config.GetAutoSubscribe()
-	m.bot.Roster()
-	m.bot.SetStatus(m.config.GetStatus(), m.config.GetStatusMessage())
-
-	var rooms []*Room
-	for _, i := range m.config.GetRooms() {
-		password := ""
-		if i["password"] != nil {
-			password = i["password"].(string)
-		}
-		room := NewRoom(i["jid"].(string), i["nickname"].(string), password)
-		rooms = append(rooms, room)
-	}
-	m.Rooms = rooms
+	m.bot.SetStatus(m.cfg.Setup.Status, m.cfg.Setup.StatusMessage)
 	m.Start(m.bot)
 }
 
@@ -243,7 +224,7 @@ func (m *Admin) Chat(msg xmpp.Chat) {
 }
 
 func (m *Admin) Presence(pres xmpp.Presence) {
-	if m.config.GetDebug() {
+	if m.cfg.Setup.Debug {
 		fmt.Printf("[%s] Presence:%#v\n", m.Name, pres)
 	}
 	//处理订阅消息
@@ -274,7 +255,7 @@ func (m *Admin) IsAdminID(jid string) bool {
 
 func (m *Admin) IsSysAdminID(jid string) bool {
 	u, _ := utils.SplitJID(jid)
-	for _, admin := range m.config.Setup.Admin {
+	for _, admin := range m.cfg.Setup.Admin {
 		if u == admin {
 			return true
 		}
@@ -873,7 +854,7 @@ func (m *Admin) plugin_all(cmd string, msg xmpp.Chat) {
 
 	names = append(names, m.Name+"[内置]")
 
-	for name, v := range m.config.GetPlugins() {
+	for name, v := range m.cfg.Plugin {
 		if v["enable"].(bool) {
 			names = append(names, name+"[启用]")
 		} else {

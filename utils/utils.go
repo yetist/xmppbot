@@ -18,6 +18,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -224,4 +225,14 @@ func GetBase64Image(body []byte, width, height int) string {
 	encBuf := make([]byte, maxEncLen)
 	e64.Encode(encBuf, buf.Bytes())
 	return fmt.Sprintf("data:image/png;base64,%s", string(encBuf))
+}
+
+// IsFile returns true if given path is a file,
+// or returns false when it's a directory or does not exist.
+func IsFile(filePath string) bool {
+	f, e := os.Stat(filePath)
+	if e != nil {
+		return false
+	}
+	return !f.IsDir()
 }

@@ -18,25 +18,25 @@ type Bot struct {
 	web          *WebServer
 	plugins      []PluginIface
 	admin        AdminIface
-	config       config.Config
+	cfg          config.Config
 	createPlugin NewFunc
 }
 
-func NewBot(client *xmpp.Client, config config.Config, f NewFunc) *Bot {
+func NewBot(client *xmpp.Client, cfg config.Config, f NewFunc) *Bot {
 	b := &Bot{
 		client:       client,
 		cron:         cron.New(),
-		config:       config,
-		web:          NewWebServer(config.GetWebHost(), config.GetWebPort()),
+		cfg:          cfg,
+		web:          NewWebServer(cfg.Setup.WebHost, cfg.Setup.WebPort),
 		createPlugin: f,
 	}
 
 	// 自动启用内置插件
-	admin := NewAdmin("admin", config)
+	admin := NewAdmin("admin")
 	b.admin = admin
 	b.plugins = append(b.plugins, admin)
 
-	for name, v := range config.GetPlugins() {
+	for name, v := range cfg.Plugin {
 		if v["enable"].(bool) { //模块是否被启用
 			plugin := f(name, v)
 			if plugin != nil && plugin.CheckEnv() { //模块运行环境是否满足
@@ -47,12 +47,16 @@ func NewBot(client *xmpp.Client, config config.Config, f NewFunc) *Bot {
 	return b
 }
 
+func (b *Bot) GetConfig() config.Config {
+	return b.cfg
+}
+
 func (b *Bot) GetPlugins() []PluginIface {
 	return b.plugins
 }
 
 func (b *Bot) GetPluginOption(name string) map[string]interface{} {
-	return b.config.Plugin[name]
+	return b.cfg.Plugin[name]
 }
 
 type NewFunc func(name string, opt map[string]interface{}) PluginIface
@@ -60,11 +64,11 @@ type NewFunc func(name string, opt map[string]interface{}) PluginIface
 // Interface(), 初始化并加载所有模块
 func (b *Bot) Init(f NewFunc) {
 	// 自动启用内置插件
-	admin := NewAdmin("admin", b.config)
+	admin := NewAdmin("admin")
 	b.admin = admin
 	b.plugins = append(b.plugins, admin)
 
-	for name, v := range b.config.GetPlugins() {
+	for name, v := range b.cfg.Plugin {
 		if v["enable"].(bool) { //模块是否被启用
 			plugin := f(name, v)
 			if plugin != nil && plugin.CheckEnv() { //模块运行环境是否满足
@@ -80,7 +84,7 @@ func (b *Bot) Start() {
 	}
 
 	// 每分钟运行ping
-	b.cron.AddFunc("0 0/1 * * * ?", func() { b.client.PingC2S(b.config.GetUsername(), b.config.GetServer()) }, "xmpp ping")
+	b.cron.AddFunc("0 0/1 * * * ?", func() { b.client.PingC2S(b.cfg.Account.Username, b.cfg.Account.Server) }, "xmpp ping")
 	b.cron.Start()
 }
 
@@ -89,7 +93,7 @@ func (b *Bot) Run() {
 		for {
 			chat, err := b.client.Recv()
 			if err != nil {
-				log.Fatal(err)
+				log.Print("bot get error:", err)
 			}
 			switch v := chat.(type) {
 			case xmpp.Chat:
@@ -128,7 +132,7 @@ func (b *Bot) Restart() {
 	var disable_plugins []string
 
 	// 对正在运行中的插件，调用Restart接口重启
-	for name, _ := range b.config.GetPlugins() {
+	for name, _ := range b.cfg.Plugin {
 		for _, v := range b.plugins {
 			if name == v.GetName() {
 				v.Restart()
@@ -174,7 +178,7 @@ func (b *Bot) AddPlugin(name string) {
 			return
 		}
 	}
-	for n, v := range b.config.GetPlugins() {
+	for n, v := range b.cfg.Plugin {
 		if n == name && v["enable"].(bool) {
 			plugin := b.createPlugin(name, v)
 			if plugin != nil && plugin.CheckEnv() { //模块运行环境是否满足
@@ -227,7 +231,7 @@ func (b *Bot) InviteToMUC(jid, roomid, reason string) {
 				password = v.GetPassword()
 			}
 		}
-		b.client.InviteToMUC(b.config.GetUsername(), nick, jid, roomid, password, reason)
+		b.client.InviteToMUC(b.cfg.Account.Username, nick, jid, roomid, password, reason)
 	}
 }
 
@@ -298,7 +302,7 @@ func (b *Bot) IsRoomID(jid string) bool {
 func (b *Bot) SentThis(msg xmpp.Chat) bool {
 
 	if msg.Type == "chat" {
-		if id, res := utils.SplitJID(msg.Remote); id == b.config.GetUsername() && res == b.config.GetResource() {
+		if id, res := utils.SplitJID(msg.Remote); id == b.cfg.Account.Username && res == b.cfg.Account.Resource {
 			return true
 		}
 	} else if msg.Type == "groupchat" {
@@ -342,7 +346,7 @@ func (b *Bot) Called(msg xmpp.Chat) (ok bool, text string) {
 
 func (b *Bot) SetRoomNick(r *Room, nick string) (n int, err error) {
 	msg := fmt.Sprintf("<presence from='%s/%s' to='%s/%s'/>",
-		b.config.GetUsername(), b.config.GetResource(), r.GetJID(), nick)
+		b.cfg.Account.Username, b.cfg.Account.Resource, r.GetJID(), nick)
 	if n, err = b.client.SendOrg(msg); err == nil {
 		r.SetNick(nick)
 	}
@@ -350,7 +354,7 @@ func (b *Bot) SetRoomNick(r *Room, nick string) (n int, err error) {
 }
 
 func (b *Bot) SetRobert(jid string) (n int, err error) {
-	msg := fmt.Sprintf("<presence from='%s/%s' to='%s'><caps:c node='http://talk.google.com/xmpp/bot/caps' ver='1.0' xmlns:caps='http://jabber.org/protocol/caps'/></presence>", b.config.GetUsername(), b.config.GetResource(), jid)
+	msg := fmt.Sprintf("<presence from='%s/%s' to='%s'><caps:c node='http://talk.google.com/xmpp/bot/caps' ver='1.0' xmlns:caps='http://jabber.org/protocol/caps'/></presence>", b.cfg.Account.Username, b.cfg.Account.Resource, jid)
 	return b.client.SendOrg(msg)
 }
 

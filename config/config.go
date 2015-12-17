@@ -12,7 +12,10 @@ import (
 )
 
 type Config struct {
-	Account struct {
+	AppName    string
+	AppVersion string
+	AppConfig  string
+	Account    struct {
 		Username string
 		Password string
 		Resource string
@@ -34,58 +37,6 @@ type Config struct {
 		Rooms         []map[string]interface{}
 	}
 	Plugin map[string]map[string]interface{}
-}
-
-func (c *Config) GetUsername() string {
-	return c.Account.Username
-}
-
-func (c *Config) GetResource() string {
-	return c.Account.Resource
-}
-
-func (c *Config) GetServer() string {
-	return c.Account.Server
-}
-
-func (c *Config) GetWebHost() string {
-	return c.Setup.WebHost
-}
-
-func (c *Config) GetWebPort() int {
-	return c.Setup.WebPort
-}
-
-func (c *Config) GetPlugins() map[string]map[string]interface{} {
-	return c.Plugin
-}
-
-func (c *Config) GetPlugin(name string) map[string]interface{} {
-	return c.Plugin[name]
-}
-
-func (c *Config) GetAdmin() []string {
-	return c.Setup.Admin
-}
-
-func (c *Config) GetRooms() []map[string]interface{} {
-	return c.Setup.Rooms
-}
-
-func (c *Config) GetCmdPrefix() string {
-	return c.Setup.CmdPrefix
-}
-func (c *Config) GetAutoSubscribe() bool {
-	return c.Setup.AutoSubscribe
-}
-func (c *Config) GetStatus() string {
-	return c.Setup.Status
-}
-func (c *Config) GetStatusMessage() string {
-	return c.Setup.StatusMessage
-}
-func (c *Config) GetDebug() bool {
-	return c.Setup.Debug
 }
 
 func getExecPath() (string, error) {
@@ -178,6 +129,11 @@ func LoadConfig(name, version, cfgname string) (config Config, err error) {
 	userconf := path.Join(userConfigDir(name, version), cfgname)
 	selfconf := path.Join(selfConfigDir(), cfgname)
 	cwdconf := path.Join(cwdDir(), cfgname)
+	defer func() {
+		config.AppName = name
+		config.AppVersion = version
+		config.AppConfig = cfgname
+	}()
 	if isFile(cwdconf) {
 		if _, err = toml.DecodeFile(cwdconf, &config); err != nil {
 			return
@@ -198,21 +154,4 @@ func LoadConfig(name, version, cfgname string) (config Config, err error) {
 		fmt.Printf("\n*** 无法找到配置文件，有效的配置文件路径列表为(按顺序查找)***\n\n1. %s\n2. %s\n3. %s\n", selfconf, userconf, sysconf)
 	}
 	return
-}
-
-func GetDataPath(name, version, datafile string) string {
-	syspath := path.Join(sysConfigDir(name, version), "data", datafile)
-	userpath := path.Join(userConfigDir(name, version), "data", datafile)
-	selfpath := path.Join(selfConfigDir(), "data", datafile)
-	cwdpath := path.Join(cwdDir(), "data", datafile)
-	if isFile(cwdpath) {
-		return cwdpath
-	} else if isFile(selfpath) {
-		return selfpath
-	} else if isFile(userpath) {
-		return userpath
-	} else if isFile(syspath) {
-		return syspath
-	}
-	return ""
 }
