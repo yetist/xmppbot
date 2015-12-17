@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-xmpp"
-	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"net/http"
 	"strings"
@@ -16,7 +16,7 @@ import (
 type Logger struct {
 	Name   string
 	Option map[string]bool
-	bot    *core.Bot
+	bot    *robot.Bot
 	x      *xorm.Engine
 }
 
@@ -187,7 +187,7 @@ func (m *Logger) ShowPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m *Logger) Start(bot *core.Bot) {
+func (m *Logger) Start(bot *robot.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 	m.bot.AddHandler(m.GetName(), "/", m.IndexPage, "index")

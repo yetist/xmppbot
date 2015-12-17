@@ -1,4 +1,4 @@
-package core
+package robot
 
 import (
 	"github.com/mattn/go-xmpp"

@@ -3,7 +3,7 @@ package plugins
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
-	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"net"
 	"strings"
@@ -11,7 +11,7 @@ import (
 
 type About struct {
 	Name string
-	bot  *core.Bot
+	bot  *robot.Bot
 }
 
 func NewAbout(name string, opt map[string]interface{}) *About {
@@ -42,10 +42,10 @@ func (m *About) CheckEnv() bool {
 	return true
 }
 
-func (m *About) Start(bot *core.Bot) {
+func (m *About) Start(bot *robot.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
-	m.bot.SetPerm(m.GetName(), core.AllTalk)
+	m.bot.SetPerm(m.GetName(), robot.AllTalk)
 }
 
 func (m *About) Stop() {

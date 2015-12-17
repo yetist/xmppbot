@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
 	"github.com/mattn/go-xmpp"
-	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"io/ioutil"
 	"net/http"
@@ -15,7 +15,7 @@ type Tuling struct {
 	Name   string
 	URL    string
 	Key    string
-	bot    *core.Bot
+	bot    *robot.Bot
 	Option map[string]bool
 }
 
@@ -62,7 +62,7 @@ func (m *Tuling) CheckEnv() bool {
 	return true
 }
 
-func (m *Tuling) Start(bot *core.Bot) {
+func (m *Tuling) Start(bot *robot.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 }

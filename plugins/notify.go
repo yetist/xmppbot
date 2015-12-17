@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/mattn/go-xmpp"
-	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"net"
 	"net/http"
@@ -15,7 +15,7 @@ type Notify struct {
 	Name   string
 	Allows []string
 	Option map[string]string
-	bot    *core.Bot
+	bot    *robot.Bot
 }
 
 func NewNotify(name string, opt map[string]interface{}) *Notify {
@@ -98,10 +98,10 @@ func (m *Notify) JIDPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("notify sent to " + jid + "\n"))
 }
 
-func (m *Notify) Start(bot *core.Bot) {
+func (m *Notify) Start(bot *robot.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
-	m.bot.SetPerm(m.GetName(), core.ChatTalk|core.AdminPerm)
+	m.bot.SetPerm(m.GetName(), robot.ChatTalk|robot.AdminPerm)
 	m.bot.AddHandler(m.GetName(), "/{jid}/", m.JIDPage, "jidpage")
 }
 

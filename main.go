@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	"github.com/yetist/xmppbot/config"
-	"github.com/yetist/xmppbot/core"
 	"github.com/yetist/xmppbot/plugins"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"log"
 	"os"
@@ -83,8 +83,8 @@ func parseArgs() {
 }
 
 // 新增模块在这里注册
-func CreatePlugin(name string, opt map[string]interface{}) core.PluginIface {
-	var plugin core.PluginIface
+func CreatePlugin(name string, opt map[string]interface{}) robot.PluginIface {
+	var plugin robot.PluginIface
 	switch name {
 	case "random":
 		plugin = plugins.NewRandom(name, opt)
@@ -106,13 +106,13 @@ func main() {
 	var client *xmpp.Client
 	var err error
 	/*
-		var newplugin = map[string]func(name string, opt map[string]interface{}) core.BotIface{
-			"random": func(name string, opt map[string]interface{}) core.BotIface { return NewRandom(name, opt) },
-			"url":    func(name string, opt map[string]interface{}) core.BotIface { return NewUrl(name, opt) },
-			"tuling": func(name string, opt map[string]interface{}) core.BotIface { return NewTuling(name, opt) },
-			"logger": func(name string, opt map[string]interface{}) core.BotIface { return NewLogger(name, opt) },
-			"notify": func(name string, opt map[string]interface{}) core.BotIface { return NewNotify(name, opt) },
-			"about":  func(name string, opt map[string]interface{}) core.BotIface { return NewAbout(name, opt) },
+		var newplugin = map[string]func(name string, opt map[string]interface{}) robot.BotIface{
+			"random": func(name string, opt map[string]interface{}) robot.BotIface { return NewRandom(name, opt) },
+			"url":    func(name string, opt map[string]interface{}) robot.BotIface { return NewUrl(name, opt) },
+			"tuling": func(name string, opt map[string]interface{}) robot.BotIface { return NewTuling(name, opt) },
+			"logger": func(name string, opt map[string]interface{}) robot.BotIface { return NewLogger(name, opt) },
+			"notify": func(name string, opt map[string]interface{}) robot.BotIface { return NewNotify(name, opt) },
+			"about":  func(name string, opt map[string]interface{}) robot.BotIface { return NewAbout(name, opt) },
 		}
 	*/
 
@@ -122,7 +122,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	bot := core.NewBot(client, cfg, CreatePlugin)
+	bot := robot.NewBot(client, cfg, CreatePlugin)
 	bot.Start()
 	bot.Run()
 }

@@ -3,7 +3,7 @@ package plugins
 import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
-	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"net/http"
 	"regexp"
@@ -14,7 +14,7 @@ import (
 
 type Url struct {
 	Name   string
-	bot    *core.Bot
+	bot    *robot.Bot
 	Option map[string]interface{}
 }
 
@@ -63,7 +63,7 @@ func (m *Url) CheckEnv() bool {
 	return true
 }
 
-func (m *Url) Start(bot *core.Bot) {
+func (m *Url) Start(bot *robot.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 }

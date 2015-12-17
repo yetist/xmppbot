@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/mattn/go-xmpp"
 	//"github.com/yetist/xmppbot/config"
-	"github.com/yetist/xmppbot/core"
+	"github.com/yetist/xmppbot/robot"
 	"github.com/yetist/xmppbot/utils"
 	"io/ioutil"
 	"math/rand"
@@ -18,7 +18,7 @@ type Random struct {
 	RandomPath string
 	FuckList   []string
 	RandomList []string
-	bot        *core.Bot
+	bot        *robot.Bot
 	Option     map[string]bool
 }
 
@@ -73,7 +73,7 @@ func (m *Random) CheckEnv() bool {
 	return true
 }
 
-func (m *Random) Start(bot *core.Bot) {
+func (m *Random) Start(bot *robot.Bot) {
 	fmt.Printf("[%s] Starting...\n", m.GetName())
 	m.bot = bot
 	rand.Seed(time.Now().Unix())

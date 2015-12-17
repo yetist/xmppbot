@@ -1,4 +1,4 @@
-package core
+package robot
 
 import (
 	"github.com/yetist/xmppbot/utils"
