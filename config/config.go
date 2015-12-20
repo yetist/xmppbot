@@ -3,9 +3,8 @@ package config
 import (
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/yetist/xmppbot/utils"
 	"os"
-	"os/exec"
-	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
@@ -39,52 +38,8 @@ type Config struct {
 	Plugin map[string]map[string]interface{}
 }
 
-func getExecPath() (string, error) {
-	file, err := exec.LookPath(os.Args[0])
-	if err != nil {
-		return "", err
-	}
-	p, err := filepath.Abs(file)
-	if err != nil {
-		return "", err
-	}
-	return p, nil
-}
-
-// WorkDir returns absolute path of work directory.
-func getExecDir() (string, error) {
-	execPath, err := getExecPath()
-	return path.Dir(strings.Replace(execPath, "\\", "/", -1)), err
-}
-
-// isFile returns true if given path is a file,
-// or returns false when it's a directory or does not exist.
-func isFile(filePath string) bool {
-	f, e := os.Stat(filePath)
-	if e != nil {
-		return false
-	}
-	return !f.IsDir()
-}
-
-// ExpandUser is a helper function that expands the first '~' it finds in the
-// passed path with the home directory of the current user.
-//
-// Note: This only works on environments similar to bash.
-func expandUser(path string) string {
-	if u, err := user.Current(); err == nil {
-		return strings.Replace(path, "~", u.HomeDir, -1)
-	}
-	return path
-}
-
-func cwdDir() string {
-	cwd, _ := os.Getwd()
-	return cwd
-}
-
 func selfConfigDir() string {
-	if dir, err := getExecDir(); err != nil || strings.HasSuffix(dir, "_obj/exe") {
+	if dir, err := utils.GetExecDir(); err != nil || strings.HasSuffix(dir, "_obj/exe") {
 		wd, _ := os.Getwd()
 		return wd
 	} else {
@@ -94,7 +49,7 @@ func selfConfigDir() string {
 
 func userConfigDir(name, version string) (pth string) {
 	if pth = os.Getenv("XDG_CONFIG_HOME"); pth == "" {
-		pth = expandUser("~/.config")
+		pth = utils.ExpandUser("~/.config")
 	}
 
 	if name != "" {
@@ -112,7 +67,7 @@ func sysConfigDir(name, version string) (pth string) {
 	if pth = os.Getenv("XDG_CONFIG_DIRS"); pth == "" {
 		pth = "/etc/xdg"
 	} else {
-		pth = expandUser(filepath.SplitList(pth)[0])
+		pth = utils.ExpandUser(filepath.SplitList(pth)[0])
 	}
 	if name != "" {
 		pth = filepath.Join(pth, name)
@@ -128,25 +83,25 @@ func LoadConfig(name, version, cfgname string) (config Config, err error) {
 	sysconf := path.Join(sysConfigDir(name, version), cfgname)
 	userconf := path.Join(userConfigDir(name, version), cfgname)
 	selfconf := path.Join(selfConfigDir(), cfgname)
-	cwdconf := path.Join(cwdDir(), cfgname)
+	cwdconf := path.Join(utils.CwdDir(), cfgname)
 	defer func() {
 		config.AppName = name
 		config.AppVersion = version
 		config.AppConfig = cfgname
 	}()
-	if isFile(cwdconf) {
+	if utils.IsFile(cwdconf) {
 		if _, err = toml.DecodeFile(cwdconf, &config); err != nil {
 			return
 		}
-	} else if isFile(selfconf) {
+	} else if utils.IsFile(selfconf) {
 		if _, err = toml.DecodeFile(selfconf, &config); err != nil {
 			return
 		}
-	} else if isFile(userconf) {
+	} else if utils.IsFile(userconf) {
 		if _, err = toml.DecodeFile(userconf, &config); err != nil {
 			return
 		}
-	} else if isFile(sysconf) {
+	} else if utils.IsFile(sysconf) {
 		if _, err = toml.DecodeFile(sysconf, &config); err != nil {
 			return
 		}

@@ -105,16 +105,6 @@ func CreatePlugin(name string, opt map[string]interface{}) robot.PluginIface {
 func main() {
 	var client *xmpp.Client
 	var err error
-	/*
-		var newplugin = map[string]func(name string, opt map[string]interface{}) robot.BotIface{
-			"random": func(name string, opt map[string]interface{}) robot.BotIface { return NewRandom(name, opt) },
-			"url":    func(name string, opt map[string]interface{}) robot.BotIface { return NewUrl(name, opt) },
-			"tuling": func(name string, opt map[string]interface{}) robot.BotIface { return NewTuling(name, opt) },
-			"logger": func(name string, opt map[string]interface{}) robot.BotIface { return NewLogger(name, opt) },
-			"notify": func(name string, opt map[string]interface{}) robot.BotIface { return NewNotify(name, opt) },
-			"about":  func(name string, opt map[string]interface{}) robot.BotIface { return NewAbout(name, opt) },
-		}
-	*/
 
 	parseArgs()
 
