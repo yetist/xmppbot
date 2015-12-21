@@ -10,7 +10,26 @@ import (
 	"github.com/yetist/xmppbot/utils"
 	"net/http"
 	"strings"
+	"text/template"
 	"time"
+)
+
+const (
+	index_tmpl = `
+{{range .}}
+{{if .IsRoom}}<p>chatroom: <a href='{{.JID}}/'>{{.JID}}</a></p>{{end}}
+{{end}}`
+	jid_tmpl = `<a href="../">Chatroom Index</a><br/>
+{{range .}}
+<p>{{.Created.Format "2006-01-02"}}: <a href='{{.Created.Format "2006-01-02"}}.txt'>Text</a> <a href='{{.Created.Format "2006-01-02"}}.html'>Html</a></p>
+{{end}}`
+	show_text_tmpl = `{{range .}}
+{{if and .IsRoom .IsImage}}[{{.Created.Format "2006-01-02 15:04:05"}}] {{.Nick|printf "%-10s"}}: ***image***{{else}}[{{.Created.Format "2006-01-02 15:04:05"}}] {{.Nick|printf "%-10s"}}: {{.Text}}{{end}}
+{{end}}`
+	show_html_tmpl = `<html><body><a href="../">Logs date</a><br/>
+{{range .}}
+{{if .IsRoom}}[{{.Created.Format "2006-01-02 15:04:05"}}] {{.Nick}}: {{.Text}}<br/>{{end}}
+{{end}}</body></html>`
 )
 
 type Logger struct {
@@ -134,16 +153,8 @@ func (m *Logger) IndexPage(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("no record"))
 		return
 	}
-	var lst []string
-	for _, v := range logs {
-		var info string
-		if v.IsRoom {
-			info = fmt.Sprintf("<p>chatroom: <a href='%s/'>%s</a></p>", v.JID, v.JID)
-			lst = append(lst, info)
-		}
-	}
-	//TODO: use html templates.
-	w.Write([]byte(strings.Join(lst, "\n")))
+	t, _ := template.New("index").Parse(index_tmpl)
+	t.Execute(w, logs)
 }
 
 func (m *Logger) JIDPage(w http.ResponseWriter, r *http.Request) {
@@ -151,17 +162,9 @@ func (m *Logger) JIDPage(w http.ResponseWriter, r *http.Request) {
 	jid := vars["jid"]
 	logs := make([]ChatLogger, 0)
 
-	var lst []string
-	if err := m.x.Select("distinct strftime('%Y-%m-%d', created, 'localtime') as created").Where("j_i_d = ?", jid).Find(&logs); err == nil {
-		for _, v := range logs {
-			local := v.Created
-			date := local.Format("2006-01-02")
-			info := fmt.Sprintf("<p>%s: <a href='%s.txt'>Text</a> <a href='%s.html'>Html</a></p>", date, date, date)
-			lst = append(lst, info)
-		}
-	}
-	//TODO: use html templates.
-	w.Write([]byte(strings.Join(lst, "\n")))
+	t, _ := template.New("jid").Parse(jid_tmpl)
+	m.x.Select("distinct strftime('%Y-%m-%d', created, 'localtime') as created").Where("j_i_d = ?", jid).Find(&logs)
+	t.Execute(w, logs)
 }
 
 func (m *Logger) ShowPage(w http.ResponseWriter, r *http.Request) {
@@ -169,21 +172,20 @@ func (m *Logger) ShowPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	jid := vars["jid"]
 	date := vars["date"]
+	format := vars["format"]
 	sql := fmt.Sprintf("select * from chat_logger where (j_i_d = '%s') and (strftime('%%Y-%%m-%%d', created)=strftime('%%Y-%%m-%%d', '%s'))", jid, date)
 	if err := m.x.Sql(sql).Desc("created").Find(&logs); err != nil {
 		w.Write([]byte("no record"))
 	} else {
-		var lst []string
-		for _, v := range logs {
-			var info string
-			if v.IsRoom {
-				info = fmt.Sprintf("[%s] %-8s: %s", v.Created.Format("2006-01-02 15:04:05"), v.Nick, v.Text)
-			} else {
-				info = fmt.Sprintf("[%s] %-8s: %s", v.Created.Format("2006-01-02 15:04:05"), v.Nick, v.Text)
-			}
-			lst = append(lst, info)
+		var t *template.Template
+		if format == "txt" {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			t, _ = template.New("index").Parse(show_text_tmpl)
+		} else if format == "html" {
+			w.Header().Set("Content-Type", "text/html")
+			t, _ = template.New("index").Parse(show_html_tmpl)
 		}
-		w.Write([]byte(strings.Join(lst, "\n")))
+		t.Execute(w, logs)
 	}
 }
 
