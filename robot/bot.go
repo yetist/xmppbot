@@ -86,7 +86,6 @@ func (b *Bot) Start() {
 	// 每分钟运行ping
 	b.cron.AddFunc("0 0/1 * * * ?", func() { b.client.PingC2S(b.cfg.Account.Username, b.cfg.Account.Server) }, "xmpp ping")
 	b.cron.Start()
-	b.web.Start()
 }
 
 func (b *Bot) Run(quit chan<- bool) {
@@ -105,6 +104,7 @@ func (b *Bot) Run(quit chan<- bool) {
 			}
 		}
 	}()
+	b.web.Start()
 }
 
 // Interface(), 模块收到消息时的处理
