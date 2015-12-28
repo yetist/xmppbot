@@ -126,6 +126,7 @@ func (b *Bot) Stop() {
 	for _, v := range b.plugins {
 		v.Stop()
 	}
+	b.client.Close()
 	b.cron.Stop()
 	b.web.Stop()
 }
