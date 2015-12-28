@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 const (
@@ -107,12 +108,24 @@ func main() {
 	var err error
 
 	parseArgs()
+	quit := make(chan bool)
 
-	if client, err = NewClient(); err != nil {
-		log.Fatal(err)
+	for {
+		if client, err = NewClient(); err != nil {
+			log.Fatal(err)
+		}
+
+		bot := robot.NewBot(client, cfg, CreatePlugin)
+		bot.Start()
+		bot.Run(quit)
+
+		select {
+		case <-quit:
+			bot.Stop()
+			time.Sleep(10 * time.Second)
+		default:
+			fmt.Printf("Got some thing\n")
+			return
+		}
 	}
-
-	bot := robot.NewBot(client, cfg, CreatePlugin)
-	bot.Start()
-	bot.Run()
 }

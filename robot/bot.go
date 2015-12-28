@@ -86,14 +86,16 @@ func (b *Bot) Start() {
 	// 每分钟运行ping
 	b.cron.AddFunc("0 0/1 * * * ?", func() { b.client.PingC2S(b.cfg.Account.Username, b.cfg.Account.Server) }, "xmpp ping")
 	b.cron.Start()
+	b.web.Start()
 }
 
-func (b *Bot) Run() {
+func (b *Bot) Run(quit chan<- bool) {
 	go func() {
 		for {
 			chat, err := b.client.Recv()
 			if err != nil {
 				log.Print("bot get error:", err)
+				quit <- true
 			}
 			switch v := chat.(type) {
 			case xmpp.Chat:
@@ -103,7 +105,6 @@ func (b *Bot) Run() {
 			}
 		}
 	}()
-	b.web.Start()
 }
 
 // Interface(), 模块收到消息时的处理
@@ -125,6 +126,8 @@ func (b *Bot) Stop() {
 	for _, v := range b.plugins {
 		v.Stop()
 	}
+	b.cron.Stop()
+	b.web.Stop()
 }
 
 // Interface(), 重新载入并初始化各模块

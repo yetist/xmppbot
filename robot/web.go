@@ -2,23 +2,26 @@ package robot
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/tylerb/graceful"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type WebServer struct {
 	Dispatcher *mux.Router
-	Host       string
+	Server     *graceful.Server
 	Urls       map[string]func(w http.ResponseWriter, r *http.Request)
-	Port       int
 }
 
 func NewWebServer(host string, port int) *WebServer {
+	handler := mux.NewRouter()
 	return &WebServer{
-		Host:       host,
-		Port:       port,
-		Dispatcher: mux.NewRouter(),
+		Dispatcher: handler,
 		Urls:       make(map[string]func(w http.ResponseWriter, r *http.Request)),
+		Server: &graceful.Server{
+			Server: &http.Server{Addr: host + ":" + strconv.Itoa(port), Handler: handler},
+		},
 	}
 }
 
@@ -38,5 +41,9 @@ func (s *WebServer) Destroy(name string) {
 }
 
 func (s *WebServer) Start() {
-	http.ListenAndServe(s.Host+":"+strconv.Itoa(s.Port), s.Dispatcher)
+	s.Server.ListenAndServe()
+}
+
+func (s *WebServer) Stop() {
+	s.Server.Stop(1 * time.Second)
 }
