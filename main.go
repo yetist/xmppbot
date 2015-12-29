@@ -122,12 +122,10 @@ func main() {
 		select {
 		case <-quit:
 			fmt.Printf("Got Stop\n")
-			bot.Stop()
-			time.Sleep(10 * time.Second)
 		default:
 			fmt.Printf("Got some thing\n")
-			bot.Stop()
-			return
 		}
+		bot.Stop()
+		time.Sleep(10 * time.Second)
 	}
 }
