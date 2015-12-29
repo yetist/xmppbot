@@ -126,6 +126,6 @@ func main() {
 			fmt.Printf("Got some thing\n")
 		}
 		bot.Stop()
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 }
