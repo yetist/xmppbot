@@ -22,6 +22,7 @@ type PluginIface interface {
 	Help() string
 	GetName() string
 	GetSummary() string
+	Description() string
 	CheckEnv() bool
 	Start(bot *Bot)
 	Stop()

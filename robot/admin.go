@@ -868,7 +868,7 @@ func (m *Admin) plugin_list(cmd string, msg xmpp.Chat) {
 	names := []string{"==运行中插件列表=="}
 
 	for _, v := range m.bot.GetPlugins() {
-		names = append(names, v.GetName()+" -- "+v.GetSummary())
+		names = append(names, v.GetName()+" -- "+v.Description())
 	}
 	m.bot.ReplyAuto(msg, strings.Join(names, "\n"))
 }
