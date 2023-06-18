@@ -37,6 +37,16 @@ func IsFile(filePath string) bool {
 	return !f.IsDir()
 }
 
+// isDir returns true if given path is a directory,
+// or returns false when it does not exist.
+func IsDir(filePath string) bool {
+	f, e := os.Stat(filePath)
+	if e != nil {
+		return false
+	}
+	return f.IsDir()
+}
+
 // ExpandUser is a helper function that expands the first '~' it finds in the
 // passed path with the home directory of the current user.
 //
